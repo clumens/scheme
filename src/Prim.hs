@@ -35,8 +35,8 @@ primEnv = [ -- Basic math.
             ("*",       mkF $ binopFold (numOp (*)) (Number 1)),
             ("even?",   mkF $ unop      (numBool even)),
             ("odd?" ,   mkF $ unop      (numBool odd)),
-            ("pos?" ,   mkF $ unop      (numBool (< 0))),
-            ("neg?" ,   mkF $ unop      (numBool (> 0))),
+            ("pos?" ,   mkF $ unop      (numBool (> 0))),
+            ("neg?" ,   mkF $ unop      (numBool (< 0))),
 
             -- Booleans.
             ("<",       mkF $ binop     (numCmp (<))),

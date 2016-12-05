@@ -57,10 +57,10 @@ runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
 
 getVar :: LispVal ->  Eval LispVal
 getVar (Atom atom) = do
-  env <- ask
-  case Map.lookup atom env of
-      Just x  -> return x
-      Nothing -> throw $ UnboundVar atom
+    env <- ask
+    case Map.lookup atom env of
+        Just x  -> return x
+        Nothing -> throw $ UnboundVar atom
 getVar n = throw $ TypeMismatch  "failure to get variable: " n
 
 ensureAtom :: LispVal -> Eval LispVal
@@ -80,9 +80,9 @@ getOdd (x:xs) = getEven xs
 
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
 applyLambda expr params args = do
-  env     <- ask
-  argEval <- mapM eval args
-  local (const (Map.fromList (zipWith (\a b -> (extractVar a,b)) params argEval) <> env)) $ eval expr
+    env     <- ask
+    argEval <- mapM eval args
+    local (const (Map.fromList (zipWith (\a b -> (extractVar a,b)) params argEval) <> env)) $ eval expr
 
 eval :: LispVal -> Eval LispVal
 eval (Number i) = return $ Number i
@@ -107,41 +107,41 @@ eval (List [Atom "begin", rest]) = evalBody rest
 eval (List ((:) (Atom "begin") rest )) = evalBody $ List rest
 
 eval (List [Atom "define", varExpr, expr]) = do
-  varAtom <- ensureAtom varExpr
-  evalVal <- eval expr
-  env     <- ask
-  local (const $ Map.insert (extractVar varAtom) evalVal env) $ return varExpr
+    varAtom <- ensureAtom varExpr
+    evalVal <- eval expr
+    env     <- ask
+    local (const $ Map.insert (extractVar varAtom) evalVal env) $ return varExpr
 
 eval (List [Atom "let", List pairs, expr]) = do
-  env   <- ask
-  atoms <- mapM ensureAtom $ getEven pairs
-  vals  <- mapM eval       $ getOdd  pairs
-  local (const (Map.fromList (zipWith (\a b -> (extractVar a, b)) atoms vals) <> env)) $ evalBody expr
+    env   <- ask
+    atoms <- mapM ensureAtom $ getEven pairs
+    vals  <- mapM eval       $ getOdd  pairs
+    local (const (Map.fromList (zipWith (\a b -> (extractVar a, b)) atoms vals) <> env)) $ evalBody expr
 eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda funciton expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)" 
 
 eval (List [Atom "lambda", List params, expr]) = do
-  envLocal <- ask
-  return  $ Lambda (IFunc $ applyLambda expr params) envLocal
+    envLocal <- ask
+    return  $ Lambda (IFunc $ applyLambda expr params) envLocal
 eval (List (Atom "lambda":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(lambda <params> <s-expr>)"
 
 eval (List ((:) x xs)) = do
-  funVar <- eval x
-  xVal   <- mapM eval xs
-  case funVar of
-      (Fun (IFunc internalFn)) -> internalFn xVal
-      (Lambda (IFunc internalfn) boundenv) -> local (const boundenv) $ internalfn xVal
-      _                -> throw $ NotFunction funVar
+    funVar <- eval x
+    xVal   <- mapM eval xs
+    case funVar of
+        Fun (IFunc internalFn)              -> internalFn xVal
+        Lambda (IFunc internalfn) boundenv  -> local (const boundenv) $ internalfn xVal
+        _                -> throw $ NotFunction funVar
 
 eval x = throw $ Default  x
 
 evalBody :: LispVal -> Eval LispVal
 evalBody (List [List ((:) (Atom "define") [Atom var, defExpr]), rest]) = do
-  evalVal <- eval defExpr
-  env     <- ask
-  local (const $ Map.insert var evalVal env) $ eval rest
+    evalVal <- eval defExpr
+    env     <- ask
+    local (const $ Map.insert var evalVal env) $ eval rest
 
 evalBody (List ((:) (List ((:) (Atom "define") [Atom var, defExpr])) rest)) = do
-  evalVal <- eval defExpr
-  env     <- ask
-  local (const $ Map.insert var evalVal env) $ evalBody $ List rest
+    evalVal <- eval defExpr
+    env     <- ask
+    local (const $ Map.insert var evalVal env) $ evalBody $ List rest
 evalBody x = eval x

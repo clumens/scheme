@@ -21,7 +21,7 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.Monoid((<>))
 
-basicEnv :: Map.Map T.Text LispVal
+basicEnv :: EnvCtx
 basicEnv = Map.fromList $ primEnv
           <> [("read", Fun $ IFunc $ unop readFn)]
 

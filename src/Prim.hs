@@ -7,7 +7,6 @@ module Prim(primEnv,
 import Exceptions(LispException(..))
 import LispVal(Eval(..), IFunc(..), LispVal(..))
 
-import           Control.Conditional(ifM)
 import           Control.Exception(throw)
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
@@ -160,6 +159,4 @@ slurp val          = throw $ TypeMismatch "read expects string, instead got: " v
 
 readTextFile :: T.Text -> Handle -> IO LispVal
 readTextFile fileName handle =
-    ifM (hIsEOF handle)
-        (TIO.hGetContents handle >>= return . String)
-        (throw $ IOError $ T.concat [" file does not exist: ", fileName])
+    TIO.hGetContents handle >>= return . String

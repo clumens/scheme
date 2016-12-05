@@ -1,6 +1,4 @@
-module Main where
-
-import Repl
+import Repl(mainLoop)
 
 main :: IO ()
-main = Repl.mainLoop
+main = mainLoop

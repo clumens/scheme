@@ -2,54 +2,48 @@
 
 module Prim where
 
-import LispVal
+import LispVal(Eval(..), IFunc(..), LispException(..), LispVal(..))
 
-import Data.Text as T
-import Data.Text.IO as TIO
-import Data.Monoid
-import Control.Monad.Except
-import Control.Monad.Catch
-import Control.Monad.Reader
-import System.Directory
-import System.IO
-import System.Environment
+import           Control.Exception(throw)
+import           Control.Monad(foldM)
+import           Control.Monad.IO.Class(liftIO)
+import           Data.Monoid((<>))
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import           System.Directory(doesFileExist)
+import           System.IO(Handle, IOMode(..), hIsEOF, withFile)
 
-import Control.Exception 
 type Prim   = [(T.Text, LispVal)]
 type Unary  = LispVal -> Eval LispVal
 type Binary = LispVal -> LispVal -> Eval LispVal
 
-
 mkF :: ([LispVal] -> Eval LispVal) -> LispVal
 mkF = Fun . IFunc
 
-
-
 primEnv :: Prim
-primEnv = [   ("+"    , mkF $ binopFold (numOp    (+))  (Number 0) )
-            , ("*"    , mkF $ binopFold (numOp    (*))  (Number 1) )
-            , ("++"   , mkF $ binopFold (strOp    (<>)) (String ""))
-            , ("-"    , mkF $ binop $    numOp    (-))
-            , ("<"    , mkF $ binop $    numCmp   (<))
-            , ("<="   , mkF $ binop $    numCmp   (<=))
-            , (">"    , mkF $ binop $    numCmp   (>))
-            , (">="   , mkF $ binop $    numCmp   (>=))
-            , ("=="   , mkF $ binop $    numCmp   (==))
-            , ("even?", mkF $ unop $     numBool   even)
-            , ("odd?" , mkF $ unop $     numBool   odd)
-            , ("pos?" , mkF $ unop $     numBool (< 0))
-            , ("neg?" , mkF $ unop $     numBool (> 0))
-            , ("eq?"  , mkF $ binop  eqCmd )
-            , ("bl-eq?",mkF $ binop $ eqOp     (==))
-            , ("and"  , mkF $ binopFold (eqOp     (&&)) (Bool True))
-            , ("or"   , mkF $ binopFold (eqOp     (||)) (Bool False))
-            , ("cons" , mkF  Prim.cons)
-            , ("cdr"  , mkF  Prim.cdr)
-            , ("car"  , mkF  Prim.car)
-            , ("quote", mkF  quote)
-            , ("file?" , mkF $ unop  fileExists)
-            , ("slurp" , mkF $ unop  slurp)
-            ]
+primEnv = [ ("+"    , mkF $ binopFold (numOp    (+))  (Number 0) ),
+            ("*"    , mkF $ binopFold (numOp    (*))  (Number 1) ),
+            ("++"   , mkF $ binopFold (strOp    (<>)) (String "")),
+            ("-"    , mkF $ binop $    numOp    (-)),
+            ("<"    , mkF $ binop $    numCmp   (<)),
+            ("<="   , mkF $ binop $    numCmp   (<=)),
+            (">"    , mkF $ binop $    numCmp   (>)),
+            (">="   , mkF $ binop $    numCmp   (>=)),
+            ("=="   , mkF $ binop $    numCmp   (==)),
+            ("even?", mkF $ unop $     numBool   even),
+            ("odd?" , mkF $ unop $     numBool   odd),
+            ("pos?" , mkF $ unop $     numBool  (< 0)),
+            ("neg?" , mkF $ unop $     numBool  (> 0)),
+            ("eq?"  , mkF $ binop      eqCmd ),
+            ("bl-eq?",mkF $ binop $    eqOp     (==)),
+            ("and"  , mkF $ binopFold (eqOp     (&&)) (Bool True)),
+            ("or"   , mkF $ binopFold (eqOp     (||)) (Bool False)),
+            ("cons" , mkF  Prim.cons),
+            ("cdr"  , mkF  Prim.cdr),
+            ("car"  , mkF  Prim.car),
+            ("quote", mkF  quote),
+            ("file?" , mkF $ unop  fileExists),
+            ("slurp" , mkF $ unop  slurp) ]
 
 unop :: Unary -> [LispVal] -> Eval LispVal
 unop op [x]    = op x
@@ -112,7 +106,6 @@ numCmp op (Number x) (Number y) = return . Bool $ op x  y
 numCmp op x          (Number y) = throw $ TypeMismatch "numeric op " x
 numCmp op (Number x)  y         = throw $ TypeMismatch "numeric op " y
 numCmp op x         y           = throw $ TypeMismatch "numeric op " x
-
 
 eqCmd :: LispVal -> LispVal -> Eval LispVal
 eqCmd (Atom   x) (Atom   y) = return . Bool $ x == y

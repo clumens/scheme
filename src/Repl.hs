@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Repl (
-  mainLoop,
-) where
+module Repl(mainLoop)
+ where
 
-import Eval
-import Data.Text as T
+import Eval(evalText, runParseTest, safeExec)
 
-import Control.Monad.Trans
-import System.Console.Haskeline
+import           Control.Monad.IO.Class(liftIO)
+import qualified Data.Text as T
+import           System.Console.Haskeline(InputT, defaultSettings, getInputLine, outputStrLn, runInputT)
 
 type Repl a = InputT IO a
 

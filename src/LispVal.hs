@@ -1,41 +1,36 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module LispVal where
 
-import qualified Data.Text as T
+import           Control.Exception(Exception)
+import           Control.Monad.IO.Class(MonadIO)
+import           Control.Monad.Reader(MonadReader, ReaderT)
 import qualified Data.Map as Map
-
-import Control.Monad.Except
-
-import Control.Monad.Reader
-import Control.Monad.Catch
-import Control.Monad.Trans.Resource
-
-
-import Data.Data
-import Data.Typeable
+import qualified Data.Text as T
+import           Data.Typeable(Typeable)
 
 type EnvCtx = Map.Map T.Text LispVal
 
 newtype Eval a = Eval { unEval :: ReaderT EnvCtx IO a }
-  deriving (Monad, Functor, Applicative, MonadReader EnvCtx,  MonadIO)
+  deriving (Applicative, Functor, Monad, MonadIO, MonadReader EnvCtx)
 
-data LispVal
-  = Atom T.Text
-  | List [LispVal]
-  | Number Integer
-  | String T.Text
-  | Fun IFunc
-  | Lambda IFunc EnvCtx
-  | Nil
-  | Bool Bool deriving (Typeable)
+data LispVal = Atom T.Text
+             | List [LispVal]
+             | Number Integer
+             | String T.Text
+             | Fun IFunc
+             | Lambda IFunc EnvCtx
+             | Nil
+             | Bool Bool
+ deriving (Typeable)
 
 instance Show LispVal where
   show = T.unpack . showVal
 
-data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal } deriving (Typeable)
-
+data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
+ deriving (Typeable)
 
 showVal :: LispVal -> T.Text
 showVal val =
@@ -50,25 +45,21 @@ showVal val =
     (Fun _ )        -> "(internal function)"
     (Lambda _ _)    -> "(lambda function)"
 
-
 unwordsList :: [LispVal] -> T.Text
 unwordsList list = T.unwords $  showVal <$> list
 
--- TODO make a pretty printer
-data LispException
-  = NumArgs Integer [LispVal]
-  | LengthOfList T.Text Int
-  | ExpectedList T.Text
-  | TypeMismatch T.Text LispVal
-  | BadSpecialForm T.Text
-  | NotFunction LispVal
-  | UnboundVar T.Text
-  | Default LispVal
-  | PError String -- from show anyway
-  | IOError T.Text deriving (Typeable)
+data LispException = NumArgs Integer [LispVal]
+                   | LengthOfList T.Text Int
+                   | ExpectedList T.Text
+                   | TypeMismatch T.Text LispVal
+                   | BadSpecialForm T.Text
+                   | NotFunction LispVal
+                   | UnboundVar T.Text
+                   | Default LispVal
+                   | PError String
+                   | IOError T.Text deriving (Typeable)
 
 instance Exception LispException
-
 
 instance Show LispException where
   show = T.unpack . showError

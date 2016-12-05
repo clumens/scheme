@@ -1,27 +1,23 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts #-}
-module Eval (
-   evalText
-  , evalFile
-  , runParseTest
-  , safeExec
-) where
 
-import Parser
-import Text.Parsec
-import LispVal
-import Prim
+module Eval (evalText,
+             evalFile,
+             runParseTest,
+             safeExec)
+ where
 
-import Data.Text as T
-import Data.Map as Map
-import Data.Monoid
-import System.Directory
-import System.IO
-import Control.Monad.Except
-import Control.Monad.Reader
-import Control.Monad.Trans.Resource
-import Control.Exception
+import LispVal(Eval(..), EnvCtx, IFunc(..), LispException(..), LispVal(..))
+import Parser(readExpr, readExprFile)
+import Prim(unop, primEnv)
+
+import           Control.Exception(SomeException, fromException, throw, try)
+import           Control.Monad.Reader(ask, local, runReaderT)
+import           Control.Monad.Trans.Resource
+import qualified Data.Text as T
+import qualified Data.Map as Map
+import           Data.Monoid((<>))
 
 basicEnv :: Map.Map T.Text LispVal
 basicEnv = Map.fromList $ primEnv
@@ -34,23 +30,21 @@ readFn x = do
     (String txt) -> textToEvalForm txt
     _            -> throw $ TypeMismatch "read expects string, instead got: " val
 
-
 safeExec :: IO a -> IO (Either String a)
-safeExec m = do 
-  result <- Control.Exception.try m
+safeExec m = do
+  result <- try m
   case result of
-    Left (eTop :: SomeException) -> 
+    Left (eTop :: SomeException) ->
       case fromException eTop of
         Just (enclosed :: LispException) -> return $ Left (show enclosed)
-        Nothing                -> return $ Left (show eTop)
+        Nothing                          -> return $ Left (show eTop)
     Right val -> return $ Right val
 
 runASTinEnv :: EnvCtx -> Eval b -> IO b
 runASTinEnv code action = runReaderT (unEval action) code
 
-evalText :: T.Text -> IO () --REPL
+evalText :: T.Text -> IO ()
 evalText textExpr = (runASTinEnv basicEnv $ textToEvalForm textExpr) >>= print
-
 
 textToEvalForm :: T.Text -> Eval LispVal
 textToEvalForm input = either (throw . PError . show  )  eval $ readExpr input
@@ -143,7 +137,7 @@ eval (List ((:) x xs)) = do
       (Lambda (IFunc internalfn) boundenv) -> local (const boundenv) $ internalfn xVal
       _                -> throw $ NotFunction funVar 
 
-eval x = throw $ Default  x --fall thru
+eval x = throw $ Default  x
 
 evalBody :: LispVal -> Eval LispVal
 evalBody (List [List ((:) (Atom "define") [Atom var, defExpr]), rest]) = do

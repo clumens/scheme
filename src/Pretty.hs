@@ -1,12 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Pretty (
-) where
+module Pretty where
 
-import Text.PrettyPrint.Leijen.Text
-import Data.Text.Lazy (fromStrict)
+import LispVal(LispVal(..))
 
-import LispVal
+import Data.Text.Lazy(fromStrict)
 
 instance Pretty LispVal where
   pretty expr = case expr of

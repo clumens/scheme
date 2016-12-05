@@ -2,7 +2,8 @@
 
 module Prim where
 
-import LispVal(Eval(..), IFunc(..), LispException(..), LispVal(..))
+import Exceptions(LispException(..))
+import LispVal(Eval(..), IFunc(..), LispVal(..))
 
 import           Control.Conditional(ifM)
 import           Control.Exception(throw)

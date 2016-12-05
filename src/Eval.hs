@@ -9,7 +9,8 @@ module Eval (evalText,
              safeExec)
  where
 
-import LispVal(Eval(..), EnvCtx, IFunc(..), LispException(..), LispVal(..))
+import Exceptions(LispException(..))
+import LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..))
 import Parser(readExpr, readExprFile)
 import Prim(unop, primEnv)
 

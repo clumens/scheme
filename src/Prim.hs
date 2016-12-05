@@ -4,6 +4,7 @@ module Prim where
 
 import LispVal(Eval(..), IFunc(..), LispException(..), LispVal(..))
 
+import           Control.Conditional(ifM)
 import           Control.Exception(throw)
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
@@ -59,25 +60,19 @@ fileExists (String txt) = Bool <$> liftIO (doesFileExist $ T.unpack txt)
 fileExists val          = throw $ TypeMismatch "read expects string, instead got: " val
 
 slurp :: LispVal  -> Eval LispVal
-slurp (String txt) = liftIO $ wFileSlurp txt
-slurp val          =  throw $ TypeMismatch "read expects string, instead got: " val
-
-wFileSlurp :: T.Text -> IO LispVal
-wFileSlurp fileName = withFile (T.unpack fileName) ReadMode go
-  where go = readTextFile fileName
+slurp (String txt) = liftIO $ withFile (T.unpack txt) ReadMode (readTextFile txt)
+slurp val          = throw $ TypeMismatch "read expects string, instead got: " val
 
 readTextFile :: T.Text -> Handle -> IO LispVal
-readTextFile fileName handle = do
-  exists <- hIsEOF handle
-  if exists
-  then (TIO.hGetContents handle) >>= (return . String)
-  else throw $ IOError $ T.concat [" file does not exits: ", fileName]
+readTextFile fileName handle =
+    ifM (hIsEOF handle)
+        (TIO.hGetContents handle >>= return . String)
+        (throw $ IOError $ T.concat [" file does not exist: ", fileName])
 
 binopFold :: Binary -> LispVal -> [LispVal] -> Eval LispVal
-binopFold op farg args = case args of
-                            [a,b]  -> op a b
-                            (a:as) -> foldM op farg args
-                            []-> throw $ NumArgs 2 args
+binopFold op farg [a, b]      = op a b
+binopFold op farg args@(a:as) = foldM op farg args
+binopFold op farg args@[]     = throw $ NumArgs 2 args
 
 numBool :: (Integer -> Bool) -> LispVal -> Eval LispVal
 numBool op (Number x) = return $ Bool $ op x
@@ -119,7 +114,7 @@ cons :: [LispVal] -> Eval LispVal
 cons [x,y@(List yList)] = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
-cons _  = throw $ ExpectedList "cons, in second argumnet"
+cons _                  = throw $ ExpectedList "cons, in second argumnet"
 
 car :: [LispVal] -> Eval LispVal
 car [List []    ] = return Nil

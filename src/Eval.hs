@@ -3,10 +3,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Eval (evalText,
-             evalFile,
-             runParseTest,
-             safeExec)
+module Eval(basicEnv,
+            evalText,
+            evalFile,
+            runParseTest,
+            safeExec)
  where
 
 import Exceptions(LispException(..))
@@ -15,8 +16,8 @@ import Parser(readExpr, readExprFile)
 import Prim(unop, primEnv)
 
 import           Control.Exception(SomeException, fromException, throw, try)
-import           Control.Monad.Reader(ask, local, runReaderT)
 import           Control.Monad.Trans.Resource
+import           Control.Monad.State(get, modify, put, runStateT)
 import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.Monoid((<>))
@@ -24,6 +25,20 @@ import           Data.Monoid((<>))
 basicEnv :: EnvCtx
 basicEnv = Map.fromList $ primEnv
           <> [("read", Fun $ IFunc $ unop readFn)]
+
+augmentEnv newBindings fn = do
+    oldEnv <- get
+    modify (Map.union (Map.fromList newBindings))
+    result <- fn
+    put oldEnv
+    return result
+
+replaceEnv newEnv fn = do
+    oldEnv <- get
+    put newEnv
+    result <- fn
+    put oldEnv
+    return result
 
 readFn :: LispVal -> Eval LispVal
 readFn x = eval x >>= \case
@@ -37,17 +52,23 @@ safeExec m = try m >>= \case
         Nothing                          -> return $ Left (show eTop)
     Right val -> return $ Right val
 
-runASTinEnv :: EnvCtx -> Eval b -> IO b
-runASTinEnv code action = runReaderT (unEval action) code
+runASTinEnv :: EnvCtx -> Eval b -> IO (b, EnvCtx)
+runASTinEnv code action = runStateT (unEval action) code
 
-evalText :: T.Text -> IO ()
-evalText textExpr = (runASTinEnv basicEnv $ textToEvalForm textExpr) >>= print
+evalText :: EnvCtx -> T.Text -> IO EnvCtx
+evalText env textExpr = do
+    (result, env') <- runASTinEnv env $ textToEvalForm textExpr
+    print result
+    return env'
 
 textToEvalForm :: T.Text -> Eval LispVal
 textToEvalForm input = either (throw . PError . show ) eval $ readExpr input
 
-evalFile :: T.Text -> IO ()
-evalFile fileExpr = (runASTinEnv basicEnv $ fileToEvalForm fileExpr) >>= print
+evalFile :: EnvCtx -> T.Text -> IO EnvCtx
+evalFile env fileExpr = do
+    (result, env') <- runASTinEnv env $ fileToEvalForm fileExpr
+    print result
+    return env'
 
 fileToEvalForm :: T.Text -> Eval LispVal
 fileToEvalForm input = either (throw . PError . show ) evalBody $ readExprFile input
@@ -57,7 +78,7 @@ runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
 
 getVar :: LispVal ->  Eval LispVal
 getVar (Atom atom) = do
-    env <- ask
+    env <- get
     case Map.lookup atom env of
         Just x  -> return x
         Nothing -> throw $ UnboundVar atom
@@ -80,9 +101,9 @@ getOdd (x:xs) = getEven xs
 
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
 applyLambda expr params args = do
-    env     <- ask
     argEval <- mapM eval args
-    local (const (Map.fromList (zipWith (\a b -> (extractVar a,b)) params argEval) <> env)) $ eval expr
+    augmentEnv (zipWith (\a b -> (extractVar a, b)) params argEval) $
+        eval expr
 
 eval :: LispVal -> Eval LispVal
 eval (Number i) = return $ Number i
@@ -109,18 +130,18 @@ eval (List ((:) (Atom "begin") rest )) = evalBody $ List rest
 eval (List [Atom "define", varExpr, expr]) = do
     varAtom <- ensureAtom varExpr
     evalVal <- eval expr
-    env     <- ask
-    local (const $ Map.insert (extractVar varAtom) evalVal env) $ return varExpr
+    modify (Map.insert (extractVar varAtom) evalVal)
+    return varExpr
 
 eval (List [Atom "let", List pairs, expr]) = do
-    env   <- ask
     atoms <- mapM ensureAtom $ getEven pairs
     vals  <- mapM eval       $ getOdd  pairs
-    local (const (Map.fromList (zipWith (\a b -> (extractVar a, b)) atoms vals) <> env)) $ evalBody expr
+    augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
+        evalBody expr
 eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)" 
 
 eval (List [Atom "lambda", List params, expr]) = do
-    envLocal <- ask
+    envLocal <- get
     return  $ Lambda (IFunc $ applyLambda expr params) envLocal
 eval (List (Atom "lambda":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(lambda <params> <s-expr>)"
 
@@ -129,19 +150,19 @@ eval (List ((:) x xs)) = do
     xVal   <- mapM eval xs
     case funVar of
         Fun (IFunc internalFn)              -> internalFn xVal
-        Lambda (IFunc internalfn) boundenv  -> local (const boundenv) $ internalfn xVal
-        _                -> throw $ NotFunction funVar
+        Lambda (IFunc internalfn) boundenv  -> replaceEnv boundenv (internalfn xVal)
+        _                                   -> throw $ NotFunction funVar
 
 eval x = throw $ Default  x
 
 evalBody :: LispVal -> Eval LispVal
 evalBody (List [List ((:) (Atom "define") [Atom var, defExpr]), rest]) = do
     evalVal <- eval defExpr
-    env     <- ask
-    local (const $ Map.insert var evalVal env) $ eval rest
+    modify (Map.insert var evalVal)
+    eval rest
 
 evalBody (List ((:) (List ((:) (Atom "define") [Atom var, defExpr])) rest)) = do
     evalVal <- eval defExpr
-    env     <- ask
-    local (const $ Map.insert var evalVal env) $ evalBody $ List rest
+    modify (Map.insert var evalVal)
+    evalBody $ List rest
 evalBody x = eval x

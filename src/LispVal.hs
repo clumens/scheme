@@ -5,15 +5,15 @@
 module LispVal where
 
 import           Control.Monad.IO.Class(MonadIO)
-import           Control.Monad.Reader(MonadReader, ReaderT)
+import           Control.Monad.State(MonadState, StateT)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import           Data.Typeable(Typeable)
 
 type EnvCtx = Map.Map T.Text LispVal
 
-newtype Eval a = Eval { unEval :: ReaderT EnvCtx IO a }
-  deriving (Applicative, Functor, Monad, MonadIO, MonadReader EnvCtx)
+newtype Eval a = Eval { unEval :: StateT EnvCtx IO a }
+  deriving (Applicative, Functor, Monad, MonadIO, MonadState EnvCtx)
 
 data LispVal = Atom T.Text
              | List [LispVal]

@@ -4,7 +4,7 @@
 module Repl(mainLoop)
  where
 
-import Eval(basicEnv, evalText, runParseTest, safeExec)
+import Eval(evalText, runParseTest, safeExec)
 import LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
@@ -13,8 +13,8 @@ import           System.Console.Haskeline(InputT, defaultSettings, getInputLine,
 
 type Repl a = InputT IO a
 
-mainLoop :: IO ()
-mainLoop = runInputT defaultSettings (repl basicEnv)
+mainLoop :: EnvCtx -> IO ()
+mainLoop env = runInputT defaultSettings (repl env)
 
 repl :: EnvCtx -> Repl ()
 repl env = getInputLine "Repl> " >>= \case

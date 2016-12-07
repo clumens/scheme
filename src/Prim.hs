@@ -67,7 +67,7 @@ primEnv = [ -- Basic math.
 --
 
 mkF :: ([LispVal] -> Eval LispVal) -> LispVal
-mkF = Fun . IFunc
+mkF = PrimitiveFunc . IFunc
 
 unop :: Unary -> [LispVal] -> Eval LispVal
 unop op [x]    = op x

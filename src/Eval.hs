@@ -24,7 +24,7 @@ import           Data.Monoid((<>))
 
 basicEnv :: EnvCtx
 basicEnv = Map.fromList $ primEnv
-          <> [("read", Fun $ IFunc $ unop readFn)]
+          <> [("read", PrimitiveFunc $ IFunc $ unop readFn)]
 
 augmentEnv newBindings fn = do
     oldEnv <- get
@@ -127,11 +127,18 @@ eval args@(List ( (:) (Atom "if") _)) = throw $ BadSpecialForm "(if <bool> <s-ex
 eval (List [Atom "begin", rest]) = evalBody rest
 eval (List ((:) (Atom "begin") rest )) = evalBody $ List rest
 
-eval (List [Atom "define", varExpr, expr]) = do
-    varAtom <- ensureAtom varExpr
+eval (List [Atom "define", varAtom@(Atom _), expr]) = do
     evalVal <- eval expr
     modify (Map.insert (extractVar varAtom) evalVal)
-    return varExpr
+    return varAtom
+
+eval (List [Atom "define", List params, expr]) = do
+    varParams <- mapM ensureAtom params
+    let name = head varParams
+    let fn = Func (map extractVar $ tail varParams)
+                  (IFunc $ applyLambda expr params)
+    modify (Map.insert (extractVar name) fn)
+    return name
 
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
@@ -149,8 +156,9 @@ eval (List ((:) x xs)) = do
     funVar <- eval x
     xVal   <- mapM eval xs
     case funVar of
-        Fun (IFunc internalFn)              -> internalFn xVal
-        Lambda (IFunc internalfn) boundenv  -> replaceEnv boundenv (internalfn xVal)
+        PrimitiveFunc (IFunc internalFn)    -> internalFn xVal
+        Func params (IFunc internalFn)      -> augmentEnv (zip params xVal) (internalFn [])
+        Lambda (IFunc internalFn) boundenv  -> replaceEnv boundenv (internalFn xVal)
         _                                   -> throw $ NotFunction funVar
 
 eval x = throw $ Default  x

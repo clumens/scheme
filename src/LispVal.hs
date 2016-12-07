@@ -19,7 +19,8 @@ data LispVal = Atom T.Text
              | List [LispVal]
              | Number Integer
              | String T.Text
-             | Fun IFunc
+             | PrimitiveFunc IFunc
+             | Func [T.Text] IFunc
              | Lambda IFunc EnvCtx
              | Nil
              | Bool Bool
@@ -33,15 +34,16 @@ data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
 
 showVal :: LispVal -> T.Text
 showVal val = case val of
-    Atom atom     -> atom
-    String txt    -> T.concat [ "\"" , txt, "\""]
-    Number num    -> T.pack $ show num
-    Bool True     -> "#t"
-    Bool False    -> "#f"
-    Nil           -> "Nil"
-    List contents -> T.concat ["(", unwordsList contents, ")"]
-    Fun _         -> "(internal function)"
-    Lambda _ _    -> "(lambda function)"
+    Atom atom       -> atom
+    String txt      -> T.concat [ "\"" , txt, "\""]
+    Number num      -> T.pack $ show num
+    Bool True       -> "#t"
+    Bool False      -> "#f"
+    Nil             -> "Nil"
+    List contents   -> T.concat ["(", unwordsList contents, ")"]
+    PrimitiveFunc _ -> "(internal function)"
+    Func _ _        -> "(user function)"
+    Lambda _ _      -> "(lambda function)"
 
 unwordsList :: [LispVal] -> T.Text
 unwordsList list = T.unwords $ showVal <$> list

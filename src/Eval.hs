@@ -91,13 +91,13 @@ ensureAtom n = throw $ TypeMismatch "expected an atomic value" n
 extractVar :: LispVal -> T.Text
 extractVar (Atom atom) = atom
 
-getEven :: [t] -> [t]
-getEven [] = []
-getEven (x:xs) = x : getOdd xs
+getNames (List [x@(Atom _), _]:xs) = x : getNames xs
+getNames []                        = []
+getNames _                         = throw $ BadSpecialForm "let bindings list malformed"
 
-getOdd :: [t] -> [t]
-getOdd [] = []
-getOdd (x:xs) = getEven xs
+getVals (List [_, x]:xs) = x : getVals xs
+getVals []               = []
+getVals _                = throw $ BadSpecialForm "let bindings list malformed"
 
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
 applyLambda expr params args = do
@@ -134,11 +134,11 @@ eval (List [Atom "define", varExpr, expr]) = do
     return varExpr
 
 eval (List [Atom "let", List pairs, expr]) = do
-    atoms <- mapM ensureAtom $ getEven pairs
-    vals  <- mapM eval       $ getOdd  pairs
+    atoms <- mapM ensureAtom $ getNames pairs
+    vals  <- mapM eval       $ getVals pairs
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
         evalBody expr
-eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)" 
+eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)"
 
 eval (List [Atom "lambda", List params, expr]) = do
     envLocal <- get

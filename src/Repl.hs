@@ -20,7 +20,7 @@ repl :: EnvCtx -> Repl ()
 repl env = getInputLine "Repl> " >>= \case
     Nothing    -> outputStrLn "Goodbye."
     Just input -> liftIO (process env input) >>= repl
-    --Just input -> (liftIO $ processToAST input) >> repl
+    -- Just input -> (liftIO $ processToAST input) >> repl env
 
 process :: EnvCtx -> String -> IO EnvCtx
 process env str = do

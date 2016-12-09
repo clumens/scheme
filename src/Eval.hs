@@ -16,6 +16,7 @@ import Parser(readExpr, readExprFile)
 import Prim(unop, primEnv)
 
 import           Control.Exception(SomeException, fromException, throw, try)
+import           Control.Monad(void)
 import           Control.Monad.Trans.Resource
 import           Control.Monad.State(get, modify, put, runStateT)
 import qualified Data.Text as T
@@ -113,8 +114,8 @@ eval (List [])  = return Nil
 eval Nil        = return Nil
 eval n@(Atom _) = getVar n
 
-eval (List [Atom "write", rest])      = return . String . T.pack $ show rest
-eval (List ((:) (Atom "write") rest)) = return . String . T.pack . show $ List rest
+eval (List [Atom "write", rest])    = return . String . T.pack $ show rest
+eval (List (Atom "write":rest))     = return . String . T.pack . show $ List rest
 
 eval (List [Atom "quote", val]) = return val
 
@@ -122,10 +123,10 @@ eval (List [Atom "if", pred, truExpr, flsExpr]) = eval pred >>= \case
     Bool True  -> eval truExpr
     Bool False -> eval flsExpr
     _          -> throw $ BadSpecialForm "if's first arg must eval into a boolean"
-eval args@(List ( (:) (Atom "if") _)) = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
+eval args@(List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
 
 eval (List [Atom "begin", rest]) = evalBody rest
-eval (List ((:) (Atom "begin") rest )) = evalBody $ List rest
+eval (List (Atom "begin":rest))  = evalBody $ List rest
 
 eval (List [Atom "define", varAtom@(Atom _), expr]) = do
     evalVal <- eval expr
@@ -152,7 +153,7 @@ eval (List [Atom "lambda", List params, expr]) = do
     return  $ Lambda (IFunc $ applyLambda expr params) envLocal
 eval (List (Atom "lambda":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(lambda <params> <s-expr>)"
 
-eval (List ((:) x xs)) = do
+eval (List (x:xs)) = do
     funVar <- eval x
     xVal   <- mapM eval xs
     case funVar of
@@ -163,14 +164,33 @@ eval (List ((:) x xs)) = do
 
 eval x = throw $ Default  x
 
+--
+-- evalBody - This function is used to evaluate an entire file, the body of a let expression, and the
+-- body of a begin expression.  In other words, it processes a list of things instead of just a single
+-- expression.  In general, the first part of the argument pattern matches a single expression and
+-- "rest" holds everything else in the body.  The rest gets processed by calling evalBody on it again.
+--
+
+-- I have no idea when this form gets used.
 evalBody :: LispVal -> Eval LispVal
-evalBody (List [List ((:) (Atom "define") [Atom var, defExpr]), rest]) = do
+evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) = do
     evalVal <- eval defExpr
     modify (Map.insert var evalVal)
     eval rest
 
-evalBody (List ((:) (List ((:) (Atom "define") [Atom var, defExpr])) rest)) = do
+-- Define a value, like so: (define x 1).
+evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) = do
     evalVal <- eval defExpr
     modify (Map.insert var evalVal)
     evalBody $ List rest
+
+-- Define a function, like so: (define (add x y) (+ x y))
+evalBody (List (defn@(List [Atom "define", List params, List _]):rest)) = do
+    -- Evaluate the definition of the function using the eval version above.  We ignore the
+    -- return value because there's no need to do anything with it.  That function handles adding
+    -- it to the environment.
+    void $ eval defn
+    evalBody $ List rest
+
+-- Catch anything that didn't get matched already.
 evalBody x = eval x

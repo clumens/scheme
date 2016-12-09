@@ -92,10 +92,3 @@ readExpr = parse (contents parseExpr) "<stdin>"
 
 readExprFile :: T.Text -> Either ParseError LispVal
 readExprFile = parse (contents parseList) "<file>"
-
-fileToEvalForm :: Either ParseError LispVal -> Either ParseError LispVal
-fileToEvalForm (Right (List list)) = Right (List (Atom "begin" : list ))
-fileToEvalForm x = x
-
-parseFile :: T.Text -> Either ParseError LispVal
-parseFile = fileToEvalForm . readExprFile

@@ -2,11 +2,11 @@
 
 import qualified Data.Text.IO as TIO
 
-import Eval(basicEnv, evalText)
+import Eval(basicEnv, evalFile)
 import Repl(mainLoop)
 
 main :: IO ()
 main = do
     contents <- TIO.readFile "library.scm"
-    env <- evalText basicEnv contents
+    env <- evalFile basicEnv contents
     mainLoop env

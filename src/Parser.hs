@@ -20,7 +20,7 @@ lexer = Tok.makeTokenParser style
 style :: Tok.GenLanguageDef T.Text () Identity
 style = Lang.emptyDef { Tok.commentStart = "{-",
                         Tok.commentEnd = "-}",
-                        Tok.commentLine = "--",
+                        Tok.commentLine = ";",
                         Tok.opStart = Tok.opLetter style,
                         Tok.opLetter = oneOf ":!#$%%&*+./<=>?@\\^|-~",
                         Tok.identStart = letter <|>  oneOf "-+/*=|&><",

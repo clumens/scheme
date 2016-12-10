@@ -8,6 +8,7 @@ import Eval(evalText, runParseTest, safeExec)
 import LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
+import           Data.Char(isSpace)
 import qualified Data.Text as T
 import           System.Console.Haskeline(InputT, defaultSettings, getInputLine, outputStrLn, runInputT)
 
@@ -17,9 +18,11 @@ mainLoop :: EnvCtx -> IO ()
 mainLoop env = runInputT defaultSettings (repl env)
 
 repl :: EnvCtx -> Repl ()
-repl env = getInputLine "Repl> " >>= \case
-    Nothing    -> outputStrLn "Goodbye."
-    Just input -> liftIO (process env input) >>= repl
+repl env = getInputLine "repl> " >>= \case
+    Nothing     -> outputStrLn "Goodbye."
+    Just input  -> case dropWhile isSpace input of
+                       "" -> repl env
+                       i  -> liftIO (process env i) >>= repl
     -- Just input -> (liftIO $ processToAST input) >> repl env
 
 process :: EnvCtx -> String -> IO EnvCtx

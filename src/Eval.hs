@@ -282,7 +282,8 @@ evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) = do
     evalBody $ List rest
 
 -- Define a function, like so: (define (add x y) (+ x y))
-evalBody (List (defn@(List [Atom "define", List params, List _]):rest)) = do
+--                         or: (define (id x) x)
+evalBody (List (defn@(List [Atom "define", List params, _]):rest)) = do
     -- Evaluate the definition of the function using the eval version above.  We ignore the
     -- return value because there's no need to do anything with it.  That function handles adding
     -- it to the environment.

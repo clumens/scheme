@@ -24,7 +24,7 @@ style = Lang.emptyDef { Tok.commentStart = "{-",
                         Tok.opStart = Tok.opLetter style,
                         Tok.opLetter = oneOf ":!#$%%&*+./<=>?@\\^|-~",
                         Tok.identStart = letter <|>  oneOf "-+/*=|&><",
-                        Tok.identLetter = letter <|> oneOf "?+=|&-/",
+                        Tok.identLetter = alphaNum <|> oneOf "?+=|&-/",
                         Tok.reservedOpNames = [ "'", "\""] }
 
 -- pattern binding using record destructing !

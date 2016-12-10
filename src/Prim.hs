@@ -46,8 +46,16 @@ primEnv = [ -- Basic math.
             ("==",      mkF $ binop     (numCmp (==))),
             ("and",     mkF $ binopFold (eqOp   (&&)) (Bool True)),
             ("or",      mkF $ binopFold (eqOp   (||)) (Bool False)),
+            -- FIXME: Replace with eqv? and a real eq?.  These will be tough.
             ("eq?",     mkF $ binop     eqCmd),
             ("bl-eq?",  mkF $ binop     (eqOp (==))),
+
+            -- Type predicates.
+            ("boolean?",    mkF $ unop isBoolean),
+            ("list?",       mkF $ unop isList),
+            ("number?",     mkF $ unop isNumber),
+            ("procedure?",  mkF $ unop isProcedure),
+            ("string?",     mkF $ unop isString),
 
             -- Strings.
             ("++",      mkF $ binopFold (strOp (<>)) (String "")),
@@ -59,6 +67,7 @@ primEnv = [ -- Basic math.
             ("quote",   mkF quote),
 
             -- IO.
+            -- FIXME: Replace these with real versions.
             ("file?",   mkF $ unop fileExists),
             ("slurp",   mkF $ unop slurp) ]
 
@@ -117,6 +126,32 @@ eqCmd (String x) (String y) = return . Bool $ x == y
 eqCmd (Bool   x) (Bool   y) = return . Bool $ x == y
 eqCmd  Nil        Nil       = return $ Bool True
 eqCmd  _          _         = return $ Bool False
+
+--
+-- TYPE PREDICATES
+--
+
+isBoolean :: LispVal -> Eval LispVal
+isBoolean (Bool _)  = return $ Bool True
+isBoolean _         = return $ Bool False
+
+isList :: LispVal -> Eval LispVal
+isList (List _)     = return $ Bool True
+isList _            = return $ Bool False
+
+isNumber :: LispVal -> Eval LispVal
+isNumber (Number _) = return $ Bool True
+isNumber _          = return $ Bool False
+
+isProcedure :: LispVal -> Eval LispVal
+isProcedure (PrimitiveFunc _)   = return $ Bool True
+isProcedure (Func _ _)          = return $ Bool True
+isProcedure (Lambda _ _)        = return $ Bool True
+isProcedure _                   = return $ Bool False
+
+isString :: LispVal -> Eval LispVal
+isString (String _) = return $ Bool True
+isString _          = return $ Bool False
 
 --
 -- LISTS

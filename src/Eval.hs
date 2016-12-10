@@ -119,8 +119,7 @@ textToEvalForm input = either (throw . PError . show) eval $ readExpr input
 -- The environment could have been augmented with new bindings.
 evalFile :: EnvCtx -> T.Text -> IO EnvCtx
 evalFile env fileExpr = do
-    (result, env') <- runASTinEnv env $ fileToEvalForm fileExpr
-    print result
+    (_, env') <- runASTinEnv env $ fileToEvalForm fileExpr
     return env'
 
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having

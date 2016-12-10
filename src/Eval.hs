@@ -23,10 +23,22 @@ import qualified Data.Text as T
 import qualified Data.Map as Map
 import           Data.Monoid((<>))
 
+--
+-- Working with environments.  This goes here instead of in its own file because the use of
+-- readFn (and therefore textToEvalForm, and therefore...) would introduce an import loop.
+-- Oh well.
+--
+
+-- The basic environment consists of the primitive environment (those functions that have to
+-- be implemented in Haskell), plus this special "read" function, which is basically eval.
+-- Do I even want that here?
 basicEnv :: EnvCtx
 basicEnv = Map.fromList $ primEnv
           <> [("read", PrimitiveFunc $ IFunc $ unop readFn)]
 
+-- Temporarily augment the environment with a set of new bindings (which take precedence over
+-- whatever was in the environment before), and execute fn in that environment.  Then restore
+-- the environment.
 augmentEnv newBindings fn = do
     oldEnv <- get
     modify (Map.union (Map.fromList newBindings))
@@ -34,6 +46,9 @@ augmentEnv newBindings fn = do
     put oldEnv
     return result
 
+-- Temporarily replace the environment with a new one, and execute fn in that environment.  Then
+-- restore the old environment.  This is useful for lambdas, which have their execution environment
+-- packed up at definition time.
 replaceEnv newEnv fn = do
     oldEnv <- get
     put newEnv
@@ -41,42 +56,7 @@ replaceEnv newEnv fn = do
     put oldEnv
     return result
 
-readFn :: LispVal -> Eval LispVal
-readFn x = eval x >>= \case
-    String txt -> textToEvalForm txt
-    val        -> throw $ TypeMismatch "read expects string, instead got: " val
-
-safeExec :: IO a -> IO (Either String a)
-safeExec m = try m >>= \case
-    Left (eTop :: SomeException) -> case fromException eTop of
-        Just (enclosed :: LispException) -> return $ Left (show enclosed)
-        Nothing                          -> return $ Left (show eTop)
-    Right val -> return $ Right val
-
-runASTinEnv :: EnvCtx -> Eval b -> IO (b, EnvCtx)
-runASTinEnv code action = runStateT (unEval action) code
-
-evalText :: EnvCtx -> T.Text -> IO EnvCtx
-evalText env textExpr = do
-    (result, env') <- runASTinEnv env $ textToEvalForm textExpr
-    print result
-    return env'
-
-textToEvalForm :: T.Text -> Eval LispVal
-textToEvalForm input = either (throw . PError . show ) eval $ readExpr input
-
-evalFile :: EnvCtx -> T.Text -> IO EnvCtx
-evalFile env fileExpr = do
-    (result, env') <- runASTinEnv env $ fileToEvalForm fileExpr
-    print result
-    return env'
-
-fileToEvalForm :: T.Text -> Eval LispVal
-fileToEvalForm input = either (throw . PError . show ) evalBody $ readExprFile input
-
-runParseTest :: T.Text -> T.Text
-runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
-
+-- Look up a name in the environment and return its LispVal.
 getVar :: LispVal ->  Eval LispVal
 getVar (Atom atom) = do
     env <- get
@@ -85,27 +65,109 @@ getVar (Atom atom) = do
         Nothing -> throw $ UnboundVar atom
 getVar n = throw $ TypeMismatch  "failure to get variable: " n
 
-ensureAtom :: LispVal -> Eval LispVal
-ensureAtom n@(Atom _) = return  n
-ensureAtom n = throw $ TypeMismatch "expected an atomic value" n
+--
+-- Evaluation functions of various types
+--
 
-extractVar :: LispVal -> T.Text
-extractVar (Atom atom) = atom
+-- Evaluate a LispVal as given by the "read" function and run it through the pipeline as if it were
+-- provided in the REPL.  This lets the user type in a string that would be scheme code and have it
+-- executed in the same environment as everything else.
+readFn :: LispVal -> Eval LispVal
+readFn x = eval x >>= \case
+    String txt -> textToEvalForm txt
+    val        -> throw $ TypeMismatch "read expects string, instead got: " val
 
-getNames (List [x@(Atom _), _]:xs) = x : getNames xs
-getNames []                        = []
-getNames _                         = throw $ BadSpecialForm "let bindings list malformed"
+-- Catch any exceptions raised by evaluation and convert them into an Either value.  This can then be
+-- printed to the screen in the REPL (or just to the console if being run non-interactively, I guess).
+safeExec :: IO a -> IO (Either String a)
+safeExec m = try m >>= \case
+    Left (eTop :: SomeException) -> case fromException eTop of
+        Just (enclosed :: LispException) -> return $ Left (show enclosed)
+        Nothing                          -> return $ Left (show eTop)
+    Right val -> return $ Right val
 
-getVals (List [_, x]:xs) = x : getVals xs
-getVals []               = []
-getVals _                = throw $ BadSpecialForm "let bindings list malformed"
+-- Force the evaluation of some scheme by running the StateT monad.  Return any return value given by the
+-- evaluation as well as the new environment.  This environment can in turn be fed back into the next
+-- run of the REPL, allowing building up the environment with more bindings.
+runASTinEnv :: EnvCtx -> Eval b -> IO (b, EnvCtx)
+runASTinEnv code action = runStateT (unEval action) code
 
+runParseTest :: T.Text -> T.Text
+runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
+
+-- The next two functions are for evaluating a string of input, which had better be just a single scheme
+-- expression.  This is used by the REPL.
+
+-- Evaluate a single input expression against the given environment, returning the new environment.
+-- The environment could have been augmented with new bindings.
+evalText :: EnvCtx -> T.Text -> IO EnvCtx
+evalText env textExpr = do
+    (result, env') <- runASTinEnv env $ textToEvalForm textExpr
+    print result
+    return env'
+
+-- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
+-- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function.
+textToEvalForm :: T.Text -> Eval LispVal
+textToEvalForm input = either (throw . PError . show) eval $ readExpr input
+
+-- The next two functions are for evaluating a string of input, which could be many scheme expressions, as
+-- would happen when reading a file from disk.  This is useful for reading in a standard library, or some user
+-- provided file.
+
+-- Evaluate several input expressions against the given environment, returning the new environment.
+-- The environment could have been augmented with new bindings.
+evalFile :: EnvCtx -> T.Text -> IO EnvCtx
+evalFile env fileExpr = do
+    (result, env') <- runASTinEnv env $ fileToEvalForm fileExpr
+    print result
+    return env'
+
+-- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
+-- this function split out could be handy elsewhere, though that's not happening right now.
+fileToEvalForm :: T.Text -> Eval LispVal
+fileToEvalForm input = either (throw . PError . show) evalBody $ readExprFile input
+
+--
+-- Misc. helper functions
+--
+
+-- Do the execution of a lambda or named user-defined function.  Evaluate all the arguments, bind them to the named
+-- parameters, add those bindings to the environment, and then execute the body of the function.
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
 applyLambda expr params args = do
     argEval <- mapM eval args
     augmentEnv (zipWith (\a b -> (extractVar a, b)) params argEval) $
         eval expr
 
+-- Check that a LispVal is an Atom, raising an exception if this is not the case.  This is used in various places
+-- to ensure that a name is given for a a variable, function, etc.
+ensureAtom :: LispVal -> Eval LispVal
+ensureAtom n@(Atom _) = return  n
+ensureAtom n = throw $ TypeMismatch "expected an atomic value" n
+
+-- Extract the name out of an Atom.
+extractVar :: LispVal -> T.Text
+extractVar (Atom atom) = atom
+
+-- Given a list of (name value) pairs from a let-expression, extract just the names.
+getNames (List [x@(Atom _), _]:xs) = x : getNames xs
+getNames []                        = []
+getNames _                         = throw $ BadSpecialForm "let bindings list malformed"
+
+-- Given a list of (name value) pairs from a let-expression, extract just the values.
+getVals (List [_, x]:xs) = x : getVals xs
+getVals []               = []
+getVals _                = throw $ BadSpecialForm "let bindings list malformed"
+
+--
+-- eval - This function is used to evaluate a single scheme expression.  It takes a lot of forms, because
+-- there are a lot of possibilities.  This function can't handle a list of expressions, like would be found
+-- in a file.  For that, see evalBody.  Some complicated expression forms end up calling evalBody on their
+-- own.
+--
+
+-- Primitive values - obvious.
 eval :: LispVal -> Eval LispVal
 eval (Number i) = return $ Number i
 eval (String s) = return $ String s
@@ -114,25 +176,48 @@ eval (List [])  = return Nil
 eval Nil        = return Nil
 eval n@(Atom _) = getVar n
 
+-- Print arguments to the console without evaluating them.
+-- Example: (write 12)
+--          (write (1 2))
+-- FIXME:  I think this is temporary and will get replaced with something more complete later on.  Note that
+-- this also adds to the environment without going through any of the other ways we have of doing that.
 eval (List [Atom "write", rest])    = return . String . T.pack $ show rest
 eval (List (Atom "write":rest))     = return . String . T.pack . show $ List rest
 
+-- Returns an unevaluated value.
+-- Example: (quote 12)
 eval (List [Atom "quote", val]) = return val
 
+-- The standard if/then/else expression.  Both then and else clauses are required, unlike real scheme.
+-- Example: (if #t 100 200)
 eval (List [Atom "if", pred, truExpr, flsExpr]) = eval pred >>= \case
     Bool True  -> eval truExpr
     Bool False -> eval flsExpr
     _          -> throw $ BadSpecialForm "if's first arg must eval into a boolean"
 eval args@(List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
 
+-- Evaluate a sequence of expressions.  The main value of this seems to be that it's like let, but doesn't
+-- require any variable definitions.
+-- Example: (begin (+ 1 2)
+--                 (* 3 4)
+--                 (- 10 5))
 eval (List [Atom "begin", rest]) = evalBody rest
 eval (List (Atom "begin":rest))  = evalBody $ List rest
 
+-- Define a single variable, giving it the value found by evaluating expr.  The variable is added to the
+-- global environment since define can only occur at the top-level.
+-- Example: (define x "hello, world!")
+--          (define y (lambda (x) (+ 1 x)))
+-- FIXME:  Is that restriction being enforced?
 eval (List [Atom "define", varAtom@(Atom _), expr]) = do
     evalVal <- eval expr
     modify (Map.insert (extractVar varAtom) evalVal)
     return varAtom
 
+-- Define a function with a list of parameters (the first of which is the name of the function) and a body.
+-- The function is added to the global environment since define can only occur at the top-level.
+-- Example: (define (inc x) (+ 1 x))
+-- FIXME:  Is that restriction being enforced?
 eval (List [Atom "define", List params, expr]) = do
     varParams <- mapM ensureAtom params
     let name = head varParams
@@ -141,6 +226,10 @@ eval (List [Atom "define", List params, expr]) = do
     modify (Map.insert (extractVar name) fn)
     return name
 
+-- Locally define a list of variables, add them to the environment, and then execute the body in that
+-- environment.
+-- Example: (let ((x 1) (y 2)) (+ x y))
+--          (let ((x 1)) (+ 1 x))
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
     vals  <- mapM eval       $ getVals pairs
@@ -148,11 +237,18 @@ eval (List [Atom "let", List pairs, expr]) = do
         evalBody expr
 eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)"
 
+-- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
+-- current environment and pack that up with the lambda's definition.
+-- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) = do
     envLocal <- get
     return  $ Lambda (IFunc $ applyLambda expr params) envLocal
 eval (List (Atom "lambda":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(lambda <params> <s-expr>)"
 
+-- Function application, called when some word is encountered.  Check if that word is a function.  If
+-- so, see if it's a primitive, lambda, or normal user-defined function.  Act appropriately.  For a
+-- lambda, that means using the packed up environment instead of the current one.
+-- Example: (inc 5)
 eval (List (x:xs)) = do
     funVar <- eval x
     xVal   <- mapM eval xs
@@ -162,6 +258,8 @@ eval (List (x:xs)) = do
         Lambda (IFunc internalFn) boundenv  -> replaceEnv boundenv (internalFn xVal)
         _                                   -> throw $ NotFunction funVar
 
+-- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
+-- that's an error.
 eval x = throw $ Default  x
 
 --

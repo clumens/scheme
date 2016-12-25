@@ -24,13 +24,13 @@ data LispVal = Atom T.Text
              | Lambda IFunc EnvCtx
              | Nil
              | Bool Bool
- deriving (Typeable)
-
-instance Show LispVal where
-  show = T.unpack . showVal
+ deriving (Show, Typeable)
 
 data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
  deriving (Typeable)
+
+instance Show IFunc where
+    show (IFunc _) = "(function)"
 
 showVal :: LispVal -> T.Text
 showVal val = case val of

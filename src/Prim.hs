@@ -160,19 +160,19 @@ cons :: [LispVal] -> Eval LispVal
 cons [x,y@(List yList)] = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
-cons x                  = throw $ Unknown $ T.concat ["Error in cons: ", T.pack $ show x]
+cons x                  = throw $ Unknown $ T.concat $ ["Error in cons: "] ++ map showVal x
 
 car :: [LispVal] -> Eval LispVal
 car [List []]     = return Nil
 car [List (x:_)]  = return x
 car []            = return Nil
-car x             = throw $ Unknown $ T.concat ["Error in car: ", T.pack $ show x]
+car x             = throw $ Unknown $ T.concat $ ["Error in car: "] ++ map showVal x
 
 cdr :: [LispVal] -> Eval LispVal
 cdr [List (x:xs)] = return $ List xs
 cdr [List []]     = return Nil
 cdr []            = return Nil
-cdr x             = throw $ Unknown $ T.concat ["Error in cdr: ", T.pack $ show x]
+cdr x             = throw $ Unknown $ T.concat $ ["Error in cdr: "] ++ map showVal x
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs

@@ -11,7 +11,7 @@ module Eval(basicEnv,
  where
 
 import Exceptions(LispException(..))
-import LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..))
+import LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Parser(readExpr, readExprFile)
 import Prim(unop, primEnv)
 
@@ -20,6 +20,7 @@ import           Control.Monad(void)
 import           Control.Monad.Trans.Resource
 import           Control.Monad.State(get, modify, put, runStateT)
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import qualified Data.Map as Map
 import           Data.Monoid((<>))
 
@@ -93,7 +94,7 @@ runASTinEnv :: EnvCtx -> Eval b -> IO (b, EnvCtx)
 runASTinEnv code action = runStateT (unEval action) code
 
 runParseTest :: T.Text -> T.Text
-runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
+runParseTest input = either (T.pack . show) showVal $ readExpr input
 
 -- The next two functions are for evaluating a string of input, which had better be just a single scheme
 -- expression.  This is used by the REPL.
@@ -103,7 +104,7 @@ runParseTest input = either (T.pack . show) (T.pack . show) $ readExpr input
 evalText :: EnvCtx -> T.Text -> IO EnvCtx
 evalText env textExpr = do
     (result, env') <- runASTinEnv env $ textToEvalForm textExpr
-    print result
+    TIO.putStrLn $ showVal result
     return env'
 
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
@@ -180,8 +181,8 @@ eval n@(Atom _) = getVar n
 --          (write (1 2))
 -- FIXME:  I think this is temporary and will get replaced with something more complete later on.  Note that
 -- this also adds to the environment without going through any of the other ways we have of doing that.
-eval (List [Atom "write", rest])    = return . String . T.pack $ show rest
-eval (List (Atom "write":rest))     = return . String . T.pack . show $ List rest
+eval (List [Atom "write", rest])    = return . String $ showVal rest
+eval (List (Atom "write":rest))     = return . String $ showVal $ List rest
 
 -- Returns an unevaluated value.
 -- Example: (quote 12)

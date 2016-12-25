@@ -64,6 +64,9 @@ primEnv = [ -- Basic math.
             ("cdr",     mkF Prim.cdr),
             ("quote",   mkF quote),
 
+            -- Code.
+            ("print-ast",   mkF $ return . String . T.pack . show),
+
             -- IO.
             -- FIXME: Replace these with real versions.
             ("file?",   mkF $ unop fileExists),

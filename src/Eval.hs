@@ -131,12 +131,12 @@ fileToEvalForm input = either (throw . PError . show) evalBody $ readExprFile in
 -- Misc. helper functions
 --
 
--- Do the execution of a lambda or named user-defined function.  Evaluate all the arguments, bind them to the named
--- parameters, add those bindings to the environment, and then execute the body of the function.
+-- Do the execution of a lambda or named user-defined function.  The arguments have already been evaluated in
+-- the function application portion of eval, so don't do that again here.  Bind the evaluated arguments to
+-- the named parameters, add those bindings to the environment, and then execute the body of the function.
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
-applyLambda expr params args = do
-    argEval <- mapM eval args
-    augmentEnv (zipWith (\a b -> (extractVar a, b)) params argEval) $
+applyLambda expr params args =
+    augmentEnv (zipWith (\a b -> (extractVar a, b)) params args) $
         eval expr
 
 -- Check that a LispVal is an Atom, raising an exception if this is not the case.  This is used in various places
@@ -276,6 +276,7 @@ evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) = do
     eval rest
 
 -- Define a value, like so: (define x 1).
+--                      or: (define x (lambda (y) 1))
 evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) = do
     evalVal <- eval defExpr
     modify (Map.insert var evalVal)

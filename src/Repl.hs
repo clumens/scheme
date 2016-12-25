@@ -9,13 +9,27 @@ import LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)
+import           Data.List(isPrefixOf)
+import qualified Data.Map as Map
 import qualified Data.Text as T
-import           System.Console.Haskeline(InputT, defaultSettings, getInputLine, outputStrLn, runInputT)
+import           System.Console.Haskeline
 
 type Repl a = InputT IO a
 
+searchFunc :: [T.Text] -> String -> [Completion]
+searchFunc wds s = map (simpleCompletion . T.unpack) $ filter (T.pack s `T.isPrefixOf`) wds
+
+replSettings :: [T.Text] -> Settings IO
+replSettings wds = Settings { historyFile = Nothing,
+                              autoAddHistory = True,
+                              complete = completeWord Nothing " \t()" $ return . searchFunc wds }
+
 mainLoop :: EnvCtx -> IO ()
-mainLoop env = runInputT defaultSettings (repl env)
+mainLoop env = do
+    let wds = Map.keys env
+    -- Add special forms defined in Eval.hs.
+    let wds' = wds ++ ["begin", "define", "else", "lambda", "let", "if", "quote", "write"]
+    runInputT (replSettings wds') (repl env)
 
 repl :: EnvCtx -> Repl ()
 repl env = getInputLine "repl> " >>= \case

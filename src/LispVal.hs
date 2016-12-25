@@ -45,5 +45,15 @@ showVal val = case val of
     Func _ _        -> "(user function)"
     Lambda _ _      -> "(lambda function)"
 
+typeOf :: LispVal -> T.Text
+typeOf val = case val of
+    Atom _      -> "Atom"
+    String _    -> "String"
+    Number _    -> "Number"
+    Bool _      -> "Bool"
+    Nil         -> "Nil"
+    List _      -> "List"
+    _           -> "Function"
+
 unwordsList :: [LispVal] -> T.Text
 unwordsList list = T.unwords $ showVal <$> list

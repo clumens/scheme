@@ -11,11 +11,9 @@
 
 ; Lists.
 (define (exists fn lst)
-        (if (null? lst)
-            #f
-            (if (fn (car lst))
-                #t
-                (exists fn (cdr lst)))))
+        (cond ((null? lst)      #f)
+              ((fn (car lst))   #t)
+              (else             (exists fn (cdr lst)))))
 (define (filter fn lst)
         (fold-right (lambda (x xs) (if (fn x) (cons x xs) xs)) '() lst))
 (define (fold-left fn accum lst)
@@ -27,11 +25,9 @@
             accum
             (fn (car lst) (fold-right fn accum (cdr lst)))))
 (define (for-all fn lst)
-        (if (null? lst)
-            #t
-            (if (fn (car lst))
-                (for-all fn (cdr lst))
-                #f)))
+        (cond ((null? lst)      #t)
+              ((fn (car lst))   (for-all fn (cdr lst)))
+              (else             #f)))
 (define (length lst) (fold-left inc 0 lst))
 (define (map fn lst)
         (if (null? lst)

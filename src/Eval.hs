@@ -194,7 +194,27 @@ eval (List [Atom "if", pred, truExpr, flsExpr]) = eval pred >>= \case
     Bool True  -> eval truExpr
     Bool False -> eval flsExpr
     _          -> throw $ BadSpecialForm "if's first arg must eval into a boolean"
-eval args@(List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
+eval (List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
+
+-- The cond expression, made up of a bunch of clauses.  The clauses are not in a list.  Each clause consists
+-- of a test and an expression.  Tests are evaluated until one returns true, in which case the matching
+-- expression is evaluated and returned as the result.  There can also be an else clause, which must be last.
+eval (List (Atom "cond":rest)) =
+    tryOne rest
+ where
+    -- Handle the else case - return whatever expression is matched up with it.
+    tryOne [List [Atom "else", expr]]   = eval expr
+    -- Handle a single condition - evaluate the test and if it's true, return the evaluation of the
+    -- expression.  If it's false, try the next condition.  If it's not boolean, raise an error.
+    tryOne (List [test, expr]:rest)     = eval test >>= \case
+                                              Bool True  -> eval expr
+                                              Bool False -> tryOne rest
+                                              x          -> throw $ TypeMismatch "Expected bool in cond test, got: " x
+    -- If there's just a test without an expression, return the evaluation of the test.
+    tryOne [List [test]]                = eval test
+    -- If we got here, we ran out of cases without seeing an else.  The return value is implementation
+    -- defined behavior, so I'm just returning false.
+    tryOne []                           = return $ Bool False
 
 -- Evaluate a sequence of expressions.  The main value of this seems to be that it's like let, but doesn't
 -- require any variable definitions.

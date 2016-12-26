@@ -28,7 +28,7 @@ mainLoop :: EnvCtx -> IO ()
 mainLoop env = do
     let wds = Map.keys env
     -- Add special forms defined in Eval.hs.
-    let wds' = wds ++ ["begin", "cond", "define", "else", "lambda", "let", "if", "quote", "write"]
+    let wds' = wds ++ ["begin", "cond", "define", "else", "lambda", "let", "if", "quote"]
     runInputT (replSettings wds') (repl env)
 
 repl :: EnvCtx -> Repl ()

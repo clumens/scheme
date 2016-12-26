@@ -176,14 +176,6 @@ eval (List [])  = return Nil
 eval Nil        = return Nil
 eval n@(Atom _) = getVar n
 
--- Print arguments to the console without evaluating them.
--- Example: (write 12)
---          (write (1 2))
--- FIXME:  I think this is temporary and will get replaced with something more complete later on.  Note that
--- this also adds to the environment without going through any of the other ways we have of doing that.
-eval (List [Atom "write", rest])    = return . String $ showVal rest
-eval (List (Atom "write":rest))     = return . String $ showVal $ List rest
-
 -- Returns an unevaluated value.
 -- Example: (quote 12)
 eval (List [Atom "quote", val]) = return val

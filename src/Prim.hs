@@ -68,9 +68,10 @@ primEnv = [ -- Basic math.
             ("print-ast",   mkF $ return . String . T.pack . show),
 
             -- IO.
+            ("write",           mkF $ unop $ return . String . showVal),
+            ("file-exists?",    mkF $ unop fileExists),
             -- FIXME: Replace these with real versions.
-            ("file?",   mkF $ unop fileExists),
-            ("slurp",   mkF $ unop slurp) ]
+            ("slurp",           mkF $ unop slurp) ]
 
 --
 -- HELPERS

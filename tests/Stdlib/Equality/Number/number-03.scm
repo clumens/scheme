@@ -1,0 +1,1 @@
+(number? '(a b c))

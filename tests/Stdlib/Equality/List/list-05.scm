@@ -1,0 +1,1 @@
+(list? (lambda (x) x))

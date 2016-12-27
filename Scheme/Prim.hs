@@ -62,15 +62,10 @@ primEnv = [ -- Basic math.
             ("eqv?",    mkF $ binop     equivalent),
 
             -- Type predicates.
-            -- NEEDS TESTS
             ("boolean?",    mkF $ unop isBoolean),
-            -- NEEDS TESTS
             ("list?",       mkF $ unop isList),
-            -- NEEDS TESTS
             ("number?",     mkF $ unop isNumber),
-            -- NEEDS TESTS
             ("procedure?",  mkF $ unop isProcedure),
-            -- NEEDS TESTS
             ("string?",     mkF $ unop isString),
 
             -- Strings.
@@ -78,11 +73,8 @@ primEnv = [ -- Basic math.
             ("++",      mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
-            -- NEEDS TESTS
             ("cons",    mkF Scheme.Prim.cons),
-            -- NEEDS TESTS
             ("car",     mkF Scheme.Prim.car),
-            -- NEEDS TESTS
             ("cdr",     mkF Scheme.Prim.cdr),
             -- NEEDS TESTS
             ("quote",   mkF quote),

@@ -1,0 +1,1 @@
+(string? (lambda (x) x))

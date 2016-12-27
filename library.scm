@@ -22,7 +22,6 @@
 (define (when test expr) (if test expr #f))
 
 ; Lists.
-; NEEDS TESTS
 (define (exists fn lst)
         (cond ((null? lst)      #f)
               ((fn (car lst))   #t)
@@ -45,12 +44,10 @@
         (if (null? lst)
             accum
             (fn (car lst) (fold-right fn accum (cdr lst)))))
-; NEEDS TESTS
 (define (for-all fn lst)
         (cond ((null? lst)      #t)
               ((fn (car lst))   (for-all fn (cdr lst)))
               (else             #f)))
-; NEEDS TESTS
 (define (length lst) (fold-left inc 0 lst))
 ; NEEDS TESTS
 (define (map fn lst)
@@ -58,7 +55,6 @@
             '()
             (cons (fn (car lst))
                   (map fn (cdr lst)))))
-; NEEDS TESTS
 (define (null? x) (eqv? '() x))
 (define (reverse lst)
         (fold-left (flip cons) '() lst))

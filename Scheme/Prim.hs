@@ -30,45 +30,71 @@ type Binary = LispVal -> LispVal -> Eval LispVal
 -- environment should be the absolute minumum.
 primEnv :: Prim
 primEnv = [ -- Basic math.
+            -- NEEDS TESTS
             ("+",       mkF $ binopFold (numOp (+)) (Number 0)),
+            -- NEEDS TESTS
             ("-",       mkF $ binop     (numOp (-))),
+            -- NEEDS TESTS
             ("*",       mkF $ binopFold (numOp (*)) (Number 1)),
+            -- NEEDS TESTS
             ("even?",   mkF $ unop      (numBool even)),
+            -- NEEDS TESTS
             ("odd?" ,   mkF $ unop      (numBool odd)),
 
             -- Booleans.
+            -- NEEDS TESTS
             ("<",       mkF $ binop     (numCmp (<))),
+            -- NEEDS TESTS
             ("<=",      mkF $ binop     (numCmp (<=))),
+            -- NEEDS TESTS
             (">",       mkF $ binop     (numCmp (>))),
+            -- NEEDS TESTS
             ("<=",      mkF $ binop     (numCmp (>=))),
+            -- NEEDS TESTS
             ("==",      mkF $ binop     (numCmp (==))),
+            -- NEEDS TESTS
             ("and",     mkF $ binopFold (eqOp   (&&)) (Bool True)),
+            -- NEEDS TESTS
             ("or",      mkF $ binopFold (eqOp   (||)) (Bool False)),
 
             -- Equivalence.
+            -- NEEDS TESTS
             ("eqv?",    mkF $ binop     equivalent),
 
             -- Type predicates.
+            -- NEEDS TESTS
             ("boolean?",    mkF $ unop isBoolean),
+            -- NEEDS TESTS
             ("list?",       mkF $ unop isList),
+            -- NEEDS TESTS
             ("number?",     mkF $ unop isNumber),
+            -- NEEDS TESTS
             ("procedure?",  mkF $ unop isProcedure),
+            -- NEEDS TESTS
             ("string?",     mkF $ unop isString),
 
             -- Strings.
+            -- NEEDS TESTS
             ("++",      mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
+            -- NEEDS TESTS
             ("cons",    mkF Scheme.Prim.cons),
+            -- NEEDS TESTS
             ("car",     mkF Scheme.Prim.car),
+            -- NEEDS TESTS
             ("cdr",     mkF Scheme.Prim.cdr),
+            -- NEEDS TESTS
             ("quote",   mkF quote),
 
             -- Code.
+            -- NEEDS TESTS
             ("print-ast",   mkF $ return . String . T.pack . show),
 
             -- IO.
+            -- NEEDS TESTS
             ("write",           mkF $ unop $ return . String . showVal),
+            -- NEEDS TESTS
             ("file-exists?",    mkF $ unop fileExists),
             -- FIXME: Replace these with real versions.
             ("slurp",           mkF $ unop slurp) ]

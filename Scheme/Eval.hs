@@ -5,7 +5,9 @@
 
 module Scheme.Eval(basicEnv,
                    evalText,
+                   execText,
                    evalFile,
+                   execFile,
                    runParseTest,
                    safeExec)
  where
@@ -98,10 +100,17 @@ runParseTest input = either (T.pack . show) showVal $ readExpr input
 -- The next two functions are for evaluating a string of input, which had better be just a single scheme
 -- expression.  This is used by the REPL.
 
+-- Evaluate a single input expression against the given environment, returning the value and discarding
+-- the new environment.
+evalText :: EnvCtx -> T.Text -> IO LispVal
+evalText env textExpr = do
+    (result, _) <- runASTinEnv env $ textToEvalForm textExpr
+    return result
+
 -- Evaluate a single input expression against the given environment, returning the new environment.
 -- The environment could have been augmented with new bindings.
-evalText :: EnvCtx -> T.Text -> IO EnvCtx
-evalText env textExpr = do
+execText :: EnvCtx -> T.Text -> IO EnvCtx
+execText env textExpr = do
     (result, env') <- runASTinEnv env $ textToEvalForm textExpr
     TIO.putStrLn $ showVal result
     return env'
@@ -115,10 +124,17 @@ textToEvalForm input = either (throw . PError . show) eval $ readExpr input
 -- would happen when reading a file from disk.  This is useful for reading in a standard library, or some user
 -- provided file.
 
+-- Evaluate several input expressions against the given environment, returning the value and discarding
+-- the new environment.
+evalFile :: EnvCtx -> T.Text -> IO LispVal
+evalFile env fileExpr = do
+    (result, _) <- runASTinEnv env $ fileToEvalForm fileExpr
+    return result
+
 -- Evaluate several input expressions against the given environment, returning the new environment.
 -- The environment could have been augmented with new bindings.
-evalFile :: EnvCtx -> T.Text -> IO EnvCtx
-evalFile env fileExpr = do
+execFile :: EnvCtx -> T.Text -> IO EnvCtx
+execFile env fileExpr = do
     (_, env') <- runASTinEnv env $ fileToEvalForm fileExpr
     return env'
 

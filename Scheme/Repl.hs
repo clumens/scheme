@@ -4,7 +4,7 @@
 module Scheme.Repl(mainLoop)
  where
 
-import Scheme.Eval(evalText, safeExec)
+import Scheme.Eval(execText, safeExec)
 import Scheme.LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
@@ -40,7 +40,7 @@ repl env = getInputLine "repl> " >>= \case
 
 process :: EnvCtx -> String -> IO EnvCtx
 process env str = do
-    res <- safeExec $ evalText env $ T.pack str
+    res <- safeExec $ execText env $ T.pack str
     case res of
         Left err   -> putStrLn err >> return env
         Right env' -> return env'

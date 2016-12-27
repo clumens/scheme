@@ -1,52 +1,70 @@
 ; Basic math.
+; NEEDS TESTS
 (define (abs x) (if (positive? x) x (- 0 x)))
+; NEEDS TESTS
 (define (dec x) (- x 1))
+; NEEDS TESTS
 (define (inc x) (+ x 1))
+; NEEDS TESTS
 (define (negative? x) (< x 0))
+; NEEDS TESTS
 (define (positive? x) (> x 0))
+; NEEDS TESTS
 (define (zero? x) (== x 0))
 
 ; Booleans.
 (define (not x) (if (eqv? x #f) #t #f))
 
 ; Conditionals.
+; NEEDS TESTS
 (define (unless test expr) (if test #f expr))
+; NEEDS TESTS
 (define (when test expr) (if test expr #f))
 
 ; Lists.
+; NEEDS TESTS
 (define (exists fn lst)
         (cond ((null? lst)      #f)
               ((fn (car lst))   #t)
               (else             (exists fn (cdr lst)))))
+; NEEDS TESTS
 (define (filter fn lst)
         (fold-right (lambda (x xs) (if (fn x) (cons x xs) xs)) '() lst))
+; NEEDS TESTS
 (define (find fn lst)
         (cond ((null? lst)      #f)
               ((fn (car lst))   (car lst))
               (else             (find fn (cdr lst)))))
+; NEEDS TESTS
 (define (fold-left fn accum lst)
         (if (null? lst)
             accum
             (fold-left fn (fn accum (car lst)) (cdr lst))))
+; NEEDS TESTS
 (define (fold-right fn accum lst)
         (if (null? lst)
             accum
             (fn (car lst) (fold-right fn accum (cdr lst)))))
+; NEEDS TESTS
 (define (for-all fn lst)
         (cond ((null? lst)      #t)
               ((fn (car lst))   (for-all fn (cdr lst)))
               (else             #f)))
+; NEEDS TESTS
 (define (length lst) (fold-left inc 0 lst))
+; NEEDS TESTS
 (define (map fn lst)
         (if (null? lst)
             '()
             (cons (fn (car lst))
                   (map fn (cdr lst)))))
+; NEEDS TESTS
 (define (null? x) (eqv? '() x))
 (define (reverse lst)
         (fold-left (flip cons) '() lst))
 
 ; Extremely tedious car/cdr variants.
+; NEEDS TESTS (all of these)
 (define caar (lambda (x) (car (car x))))
 (define cadr (lambda (x) (car (cdr x))))
 (define cdar (lambda (x) (cdr (car x))))
@@ -77,7 +95,11 @@
 (define cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
 
 ; Functions.
+; NEEDS TESTS
 (define (compose f g) (lambda (arg) (f (g arg))))
+; NEEDS TESTS
 (define (curry fn arg1) (lambda (arg2) (fn arg1 arg2)))
+; NEEDS TESTS
 (define (flip fn) (lambda (arg1 arg2) (fn arg2 arg1)))
+; NEEDS TESTS
 (define (id x) x)

@@ -10,7 +10,7 @@
 ; NEEDS TESTS
 (define (positive? x) (> x 0))
 ; NEEDS TESTS
-(define (zero? x) (== x 0))
+(define (zero? x) (= x 0))
 
 ; Booleans.
 (define (not x) (if (eqv? x #f) #t #f))

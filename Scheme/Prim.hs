@@ -51,7 +51,7 @@ primEnv = [ -- Basic math.
             -- NEEDS TESTS
             ("<=",      mkF $ binop     (numCmp (>=))),
             -- NEEDS TESTS
-            ("==",      mkF $ binop     (numCmp (==))),
+            ("=",       mkF $ binop     (numCmp (==))),
             -- NEEDS TESTS
             ("and",     mkF $ binopFold (eqOp   (&&)) (Bool True)),
             -- NEEDS TESTS

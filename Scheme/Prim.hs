@@ -1,11 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Prim(primEnv,
-            unop)
+module Scheme.Prim(primEnv,
+                   unop)
  where
 
-import Exceptions(LispException(..))
-import LispVal(Eval(..), IFunc(..), LispVal(..), showVal)
+import Scheme.Exceptions(LispException(..))
+import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 
 import           Control.Exception(throw)
 import           Control.Monad(foldM)
@@ -14,7 +14,7 @@ import           Data.Monoid((<>))
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
-import           System.IO(Handle, IOMode(..), hIsEOF, withFile)
+import           System.IO(Handle, IOMode(..), withFile)
 
 type Prim   = [(T.Text, LispVal)]
 type Unary  = LispVal -> Eval LispVal
@@ -59,9 +59,9 @@ primEnv = [ -- Basic math.
             ("++",      mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
-            ("cons",    mkF Prim.cons),
-            ("car",     mkF Prim.car),
-            ("cdr",     mkF Prim.cdr),
+            ("cons",    mkF Scheme.Prim.cons),
+            ("car",     mkF Scheme.Prim.car),
+            ("cdr",     mkF Scheme.Prim.cdr),
             ("quote",   mkF quote),
 
             -- Code.
@@ -89,37 +89,37 @@ binop op [x,y]  = op x y
 binop _  args   = throw $ NumArgs 2 args
 
 binopFold :: Binary -> LispVal -> [LispVal] -> Eval LispVal
-binopFold op farg [a, b]      = op a b
-binopFold op farg args@(a:as) = foldM op farg args
-binopFold op farg args@[]     = throw $ NumArgs 2 args
+binopFold op _ [a, b]         = op a b
+binopFold op farg args@(_:_)  = foldM op farg args
+binopFold _ _ args@[]         = throw $ NumArgs 2 args
 
 numBool :: (Integer -> Bool) -> LispVal -> Eval LispVal
 numBool op (Number x) = return $ Bool $ op x
-numBool op  x         = throw $ TypeMismatch "Number" x
+numBool _ x           = throw $ TypeMismatch "Number" x
 
 numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 numOp op (Number x) (Number y) = return $ Number $ op x  y
-numOp op x          (Number y) = throw $ TypeMismatch "Number" x
-numOp op (Number x)  y         = throw $ TypeMismatch "Number" y
-numOp op x           y         = throw $ TypeMismatch "Number" x
+numOp _  x          (Number _) = throw $ TypeMismatch "Number" x
+numOp _  (Number _) y          = throw $ TypeMismatch "Number" y
+numOp _  x          _          = throw $ TypeMismatch "Number" x
 
 strOp :: (T.Text -> T.Text -> T.Text) -> LispVal -> LispVal -> Eval LispVal
 strOp op (String x) (String y) = return $ String $ op x y
-strOp op x          (String y) = throw $ TypeMismatch "String " x
-strOp op (String x)  y         = throw $ TypeMismatch "String " y
-strOp op x           y         = throw $ TypeMismatch "String " x
+strOp _  x          (String _) = throw $ TypeMismatch "String " x
+strOp _  (String _) y          = throw $ TypeMismatch "String " y
+strOp _  x          _          = throw $ TypeMismatch "String " x
 
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
-eqOp op  x       (Bool y) = throw $ TypeMismatch "Bool" x
-eqOp op (Bool x)  y       = throw $ TypeMismatch "Bool" y
-eqOp op x         y       = throw $ TypeMismatch "Bool" x
+eqOp _  x        (Bool _) = throw $ TypeMismatch "Bool" x
+eqOp _  (Bool _) y        = throw $ TypeMismatch "Bool" y
+eqOp _  x        _        = throw $ TypeMismatch "Bool" x
 
 numCmp :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
 numCmp op (Number x) (Number y) = return . Bool $ op x  y
-numCmp op x          (Number y) = throw $ TypeMismatch "Number" x
-numCmp op (Number x)  y         = throw $ TypeMismatch "Number" y
-numCmp op x         y           = throw $ TypeMismatch "Number" x
+numCmp _  x          (Number _) = throw $ TypeMismatch "Number" x
+numCmp _  (Number _) y          = throw $ TypeMismatch "Number" y
+numCmp _  x          _          = throw $ TypeMismatch "Number" x
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y) = return . Bool $ x == y
@@ -161,7 +161,7 @@ isString _          = return $ Bool False
 --
 
 cons :: [LispVal] -> Eval LispVal
-cons [x,y@(List yList)] = return $ List $ x:yList
+cons [x, List yList]    = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
 cons x                  = throw $ Unknown $ T.concat $ ["Error in cons: "] ++ map showVal x
@@ -173,14 +173,14 @@ car []            = return Nil
 car x             = throw $ Unknown $ T.concat $ ["Error in car: "] ++ map showVal x
 
 cdr :: [LispVal] -> Eval LispVal
-cdr [List (x:xs)] = return $ List xs
+cdr [List (_:xs)] = return $ List xs
 cdr [List []]     = return Nil
 cdr []            = return Nil
 cdr x             = throw $ Unknown $ T.concat $ ["Error in cdr: "] ++ map showVal x
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
-quote [exp]       = return $ List $ Atom "quote" : [exp]
+quote [xp]        = return $ List $ Atom "quote" : [xp]
 
 --
 -- IO
@@ -196,5 +196,5 @@ slurp (String txt) = liftIO $ withFile (T.unpack txt) ReadMode (readTextFile txt
 slurp val          = throw $ TypeMismatch "read expects string, instead got: " val
 
 readTextFile :: T.Text -> Handle -> IO LispVal
-readTextFile fileName handle =
+readTextFile _ handle =
     TIO.hGetContents handle >>= return . String

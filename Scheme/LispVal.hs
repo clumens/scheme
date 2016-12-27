@@ -2,7 +2,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module LispVal where
+module Scheme.LispVal(EnvCtx,
+                      Eval(..),
+                      LispVal(..),
+                      IFunc(..),
+                      showVal,
+                      typeOf,
+                      unwordsList)
+ where
 
 import           Control.Monad.IO.Class(MonadIO)
 import           Control.Monad.State(MonadState, StateT)
@@ -26,7 +33,7 @@ data LispVal = Atom T.Text
              | Bool Bool
  deriving (Show, Typeable)
 
-data IFunc = IFunc { fn :: [LispVal] -> Eval LispVal }
+data IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
  deriving (Typeable)
 
 instance Show IFunc where

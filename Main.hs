@@ -2,13 +2,12 @@
 
 import           Control.Conditional(whenM)
 import           Control.Monad(void)
-import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
 import           System.Environment(getArgs)
 
-import Eval(basicEnv, evalFile, evalText, safeExec)
-import Repl(mainLoop)
+import Scheme.Eval(basicEnv, evalFile, evalText, safeExec)
+import Scheme.Repl(mainLoop)
 
 main :: IO ()
 main = do

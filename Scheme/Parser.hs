@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Parser (readExpr,
-               readExprFile)
+module Scheme.Parser(readExpr,
+                     readExprFile)
  where
 
-import LispVal(LispVal(..))
+import Scheme.LispVal(LispVal(..))
 
+import           Control.Monad(void)
 import           Data.Functor.Identity(Identity)
 import           Text.Parsec
 import           Text.Parsec.Text(Parser)
@@ -51,7 +52,7 @@ parseNumber = Number . read <$> many1 digit
 
 parseNegNum :: Parser LispVal
 parseNegNum = do
-  char '-'
+  void $ char '-'
   d <- many1 digit
   return $ Number . negate . read $ d
 

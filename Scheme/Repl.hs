@@ -1,15 +1,14 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Repl(mainLoop)
+module Scheme.Repl(mainLoop)
  where
 
-import Eval(evalText, runParseTest, safeExec)
-import LispVal(EnvCtx)
+import Scheme.Eval(evalText, safeExec)
+import Scheme.LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)
-import           Data.List(isPrefixOf)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import           System.Console.Haskeline
@@ -45,6 +44,3 @@ process env str = do
     case res of
         Left err   -> putStrLn err >> return env
         Right env' -> return env'
-
-processToAST :: String -> IO ()
-processToAST str = print $ runParseTest $ T.pack str

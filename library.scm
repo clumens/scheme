@@ -9,6 +9,10 @@
 ; Booleans.
 (define (not x) (if (eqv? x #f) #t #f))
 
+; Conditionals.
+(define (unless test expr) (if test #f expr))
+(define (when test expr) (if test expr #f))
+
 ; Lists.
 (define (exists fn lst)
         (cond ((null? lst)      #f)
@@ -16,6 +20,10 @@
               (else             (exists fn (cdr lst)))))
 (define (filter fn lst)
         (fold-right (lambda (x xs) (if (fn x) (cons x xs) xs)) '() lst))
+(define (find fn lst)
+        (cond ((null? lst)      #f)
+              ((fn (car lst))   (car lst))
+              (else             (find fn (cdr lst)))))
 (define (fold-left fn accum lst)
         (if (null? lst)
             accum
@@ -35,6 +43,8 @@
             (cons (fn (car lst))
                   (map fn (cdr lst)))))
 (define (null? x) (eqv? '() x))
+(define (reverse lst)
+        (fold-left (flip cons) '() lst))
 
 ; Extremely tedious car/cdr variants.
 (define caar (lambda (x) (car (car x))))

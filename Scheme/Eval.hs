@@ -3,21 +3,20 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Eval(basicEnv,
-            evalText,
-            evalFile,
-            runParseTest,
-            safeExec)
+module Scheme.Eval(basicEnv,
+                   evalText,
+                   evalFile,
+                   runParseTest,
+                   safeExec)
  where
 
-import Exceptions(LispException(..))
-import LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
-import Parser(readExpr, readExprFile)
-import Prim(unop, primEnv)
+import Scheme.Exceptions(LispException(..))
+import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
+import Scheme.Parser(readExpr, readExprFile)
+import Scheme.Prim(unop, primEnv)
 
 import           Control.Exception(SomeException, fromException, throw, try)
 import           Control.Monad(void)
-import           Control.Monad.Trans.Resource
 import           Control.Monad.State(get, modify, put, runStateT)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -151,11 +150,13 @@ extractVar :: LispVal -> T.Text
 extractVar (Atom atom) = atom
 
 -- Given a list of (name value) pairs from a let-expression, extract just the names.
+getNames :: [LispVal] -> [LispVal]
 getNames (List [x@(Atom _), _]:xs) = x : getNames xs
 getNames []                        = []
 getNames _                         = throw $ BadSpecialForm "let bindings list malformed"
 
 -- Given a list of (name value) pairs from a let-expression, extract just the values.
+getVals :: [LispVal] -> [LispVal]
 getVals (List [_, x]:xs) = x : getVals xs
 getVals []               = []
 getVals _                = throw $ BadSpecialForm "let bindings list malformed"
@@ -182,17 +183,17 @@ eval (List [Atom "quote", val]) = return val
 
 -- The standard if/then/else expression.  Both then and else clauses are required, unlike real scheme.
 -- Example: (if #t 100 200)
-eval (List [Atom "if", pred, truExpr, flsExpr]) = eval pred >>= \case
-    Bool True  -> eval truExpr
-    Bool False -> eval flsExpr
+eval (List [Atom "if", predicate, trueExpr, falseExpr]) = eval predicate >>= \case
+    Bool True  -> eval trueExpr
+    Bool False -> eval falseExpr
     _          -> throw $ BadSpecialForm "if's first arg must eval into a boolean"
 eval (List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
 
 -- The cond expression, made up of a bunch of clauses.  The clauses are not in a list.  Each clause consists
 -- of a test and an expression.  Tests are evaluated until one returns true, in which case the matching
 -- expression is evaluated and returned as the result.  There can also be an else clause, which must be last.
-eval (List (Atom "cond":rest)) =
-    tryOne rest
+eval (List (Atom "cond":clauses)) =
+    tryOne clauses
  where
     -- Handle the else case - return whatever expression is matched up with it.
     tryOne [List [Atom "else", expr]]   = eval expr
@@ -297,7 +298,7 @@ evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) = do
 
 -- Define a function, like so: (define (add x y) (+ x y))
 --                         or: (define (id x) x)
-evalBody (List (defn@(List [Atom "define", List params, _]):rest)) = do
+evalBody (List (defn@(List [Atom "define", List _, _]):rest)) = do
     -- Evaluate the definition of the function using the eval version above.  We ignore the
     -- return value because there's no need to do anything with it.  That function handles adding
     -- it to the environment.

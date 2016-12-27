@@ -2,11 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Exceptions(LispException(..),
-                  showError)
+module Scheme.Exceptions(LispException(..),
+                         showError)
  where
 
-import LispVal(LispVal(..), unwordsList, showVal, typeOf)
+import Scheme.LispVal(LispVal(..), unwordsList, showVal, typeOf)
 
 import           Control.Exception(Exception)
 import qualified Data.Text as T

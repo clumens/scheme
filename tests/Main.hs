@@ -3,6 +3,8 @@ module Main where
 import Test.Tasty(defaultMain, testGroup)
 
 import qualified Stdlib.Boolean.Not.Tests
+import qualified Stdlib.Control.Unless.Tests
+import qualified Stdlib.Control.When.Tests
 import qualified Stdlib.Equality.Boolean.Tests
 import qualified Stdlib.Equality.List.Tests
 import qualified Stdlib.Equality.Number.Tests
@@ -21,6 +23,8 @@ main :: IO ()
 main = defaultMain $ testGroup "Stdlib" [
     Stdlib.Boolean.Not.Tests.tests,
     Stdlib.Equality.Boolean.Tests.tests,
+    Stdlib.Control.Unless.Tests.tests,
+    Stdlib.Control.When.Tests.tests,
     Stdlib.Equality.List.Tests.tests,
     Stdlib.Equality.Number.Tests.tests,
     Stdlib.Equality.Procedure.Tests.tests,

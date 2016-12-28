@@ -15,10 +15,8 @@
 ; Booleans.
 (define (not x) (if (eqv? x #f) #t #f))
 
-; Conditionals.
-; NEEDS TESTS
+; Control.
 (define (unless test expr) (if test #f expr))
-; NEEDS TESTS
 (define (when test expr) (if test expr #f))
 
 ; Lists.

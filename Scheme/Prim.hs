@@ -70,7 +70,19 @@ primEnv = [ -- Basic math.
 
             -- Strings.
             -- NEEDS TESTS
-            ("++",      mkF $ binopFold (strOp (<>)) (String "")),
+            ("string=?",        mkF $ binop     (strEqOp  (==))),
+            -- NEEDS TESTS
+            ("string<?",        mkF $ binop     (strEqOp  (<))),
+            -- NEEDS TESTS
+            ("string>?",        mkF $ binop     (strEqOp  (>))),
+            -- NEEDS TESTS
+            ("string<=?",       mkF $ binop     (strEqOp  (<=))),
+            -- NEEDS TESTS
+            ("string>=?",       mkF $ binop     (strEqOp  (>=))),
+            -- NEEDS TESTS
+            ("string-append",   mkF $ binopFold (strOp    (<>)) (String "")),
+            -- NEEDS TESTS
+            ("string-length",   mkF $ unop      strLength),
 
             -- Lists.
             ("cons",    mkF Scheme.Prim.cons),
@@ -126,6 +138,12 @@ strOp op (String x) (String y) = return $ String $ op x y
 strOp _  x          (String _) = throw $ TypeMismatch "String " x
 strOp _  (String _) y          = throw $ TypeMismatch "String " y
 strOp _  x          _          = throw $ TypeMismatch "String " x
+
+strEqOp :: (T.Text -> T.Text -> Bool) -> LispVal -> LispVal -> Eval LispVal
+strEqOp op (String x) (String y) = return $ Bool $ op x y
+strEqOp _  x          (String _) = throw $ TypeMismatch "String" x
+strEqOp _  (String _) y          = throw $ TypeMismatch "String" y
+strEqOp _  x          _          = throw $ TypeMismatch "String" x
 
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
@@ -199,6 +217,14 @@ cdr x             = throw $ Unknown $ T.concat $ ["Error in cdr: "] ++ map showV
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
+
+--
+-- STRINGS
+--
+
+strLength :: LispVal -> Eval LispVal
+strLength (String s) = return $ Number (toInteger $ T.length s)
+strLength x          = throw $ TypeMismatch "string" x
 
 --
 -- IO

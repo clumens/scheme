@@ -188,6 +188,7 @@ getVals _                = throw $ BadSpecialForm "let bindings list malformed"
 eval :: LispVal -> Eval LispVal
 eval (Number i) = return $ Number i
 eval (String s) = return $ String s
+eval (Character c) = return $ Character c
 eval (Bool b)   = return $ Bool b
 eval (List [])  = return Nil
 eval Nil        = return Nil

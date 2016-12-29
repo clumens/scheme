@@ -26,6 +26,7 @@ data LispVal = Atom T.Text
              | List [LispVal]
              | Number Integer
              | String T.Text
+             | Character Char
              | PrimitiveFunc IFunc
              | Func [T.Text] IFunc
              | Lambda IFunc EnvCtx
@@ -43,6 +44,7 @@ showVal :: LispVal -> T.Text
 showVal val = case val of
     Atom atom       -> atom
     String txt      -> T.concat [ "\"" , txt, "\""]
+    Character ch    -> T.singleton ch
     Number num      -> T.pack $ show num
     Bool True       -> "#t"
     Bool False      -> "#f"
@@ -56,6 +58,7 @@ typeOf :: LispVal -> T.Text
 typeOf val = case val of
     Atom _      -> "Atom"
     String _    -> "String"
+    Character _ -> "Character"
     Number _    -> "Number"
     Bool _      -> "Bool"
     Nil         -> "Nil"

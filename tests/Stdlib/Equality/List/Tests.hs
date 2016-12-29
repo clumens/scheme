@@ -16,7 +16,8 @@ testData = [
     ("tests/Stdlib/Equality/List/list-04.scm", "#f"),
     ("tests/Stdlib/Equality/List/list-05.scm", "#f"),
     ("tests/Stdlib/Equality/List/list-06.scm", "#f"),
-    ("tests/Stdlib/Equality/List/list-07.scm", "#f")
+    ("tests/Stdlib/Equality/List/list-07.scm", "#f"),
+    ("tests/Stdlib/Equality/List/list-08.scm", "#f")
  ]
 
 tests :: TestTree

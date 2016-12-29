@@ -63,6 +63,7 @@ primEnv = [ -- Basic math.
 
             -- Type predicates.
             ("boolean?",    mkF $ unop isBoolean),
+            ("char?",       mkF $ unop isCharacter),
             ("list?",       mkF $ unop isList),
             ("number?",     mkF $ unop isNumber),
             ("procedure?",  mkF $ unop isProcedure),
@@ -173,6 +174,10 @@ equivalent _          _          = return $ Bool False
 isBoolean :: LispVal -> Eval LispVal
 isBoolean (Bool _)  = return $ Bool True
 isBoolean _         = return $ Bool False
+
+isCharacter :: LispVal -> Eval LispVal
+isCharacter (Character _) = return $ Bool True
+isCharacter _             = return $ Bool False
 
 isList :: LispVal -> Eval LispVal
 isList (List _)     = return $ Bool True

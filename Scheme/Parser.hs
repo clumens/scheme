@@ -35,6 +35,15 @@ Tok.TokenParser { Tok.parens = m_parens,
 reservedOp :: T.Text -> Parser ()
 reservedOp op = Tok.reservedOp lexer $ T.unpack op
 
+parseChar :: Parser LispVal
+parseChar = do
+    -- FIXME:  This needs to support the following:
+    --     #\<char name>
+    --     #\x<hex value>
+    void $ string "#\\"
+    c <- anyChar
+    return $ Character c
+
 parseAtom :: Parser LispVal
 parseAtom = do
   p <- m_identifier
@@ -69,12 +78,14 @@ parseQuote = do
   return $ List [Atom "quote", x]
 
 parseExpr :: Parser LispVal
-parseExpr = parseReserved <|> parseNumber
-                          <|> try parseNegNum
-                          <|> parseAtom
-                          <|> parseText
-                          <|> parseQuote
-                          <|> parseSExp
+parseExpr =  parseReserved
+         <|> parseNumber
+         <|> try parseNegNum
+         <|> parseChar
+         <|> parseAtom
+         <|> parseText
+         <|> parseQuote
+         <|> parseSExp
 
 parseReserved :: Parser LispVal
 parseReserved = (reservedOp "Nil" >> return Nil)

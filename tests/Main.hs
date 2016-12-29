@@ -19,6 +19,7 @@ import qualified Stdlib.List.Forall.Tests
 import qualified Stdlib.List.Length.Tests
 import qualified Stdlib.List.Null.Tests
 import qualified Stdlib.List.Reverse.Tests
+import qualified Stdlib.String.StringToList.Tests
 
 main :: IO ()
 main = defaultMain $ testGroup "Stdlib" [
@@ -38,5 +39,6 @@ main = defaultMain $ testGroup "Stdlib" [
     Stdlib.List.Forall.Tests.tests,
     Stdlib.List.Length.Tests.tests,
     Stdlib.List.Null.Tests.tests,
-    Stdlib.List.Reverse.Tests.tests
+    Stdlib.List.Reverse.Tests.tests,
+    Stdlib.String.StringToList.Tests.tests
  ]

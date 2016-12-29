@@ -77,6 +77,7 @@ primEnv = [ -- Basic math.
             ("char>=?",     mkF $ binop (chEqOp (>=))),
 
             -- Strings.
+            ("string->list",    mkF $ unop $ return . stringToList),
             -- NEEDS TESTS
             ("string=?",        mkF $ binop     (strEqOp  (==))),
             -- NEEDS TESTS
@@ -110,6 +111,10 @@ primEnv = [ -- Basic math.
             ("file-exists?",    mkF $ unop fileExists),
             -- FIXME: Replace these with real versions.
             ("slurp",           mkF $ unop slurp) ]
+
+stringToList :: LispVal -> LispVal
+stringToList (String s) = List $ map Character (T.unpack s)
+stringToList _          = List []
 
 --
 -- HELPERS

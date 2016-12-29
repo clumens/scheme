@@ -52,6 +52,7 @@ Test-Suite test-scheme
   main-is:         Main.hs
   build-depends:   HUnit,
                    base,
+                   filepath,
                    tasty,
                    tasty-hunit,
                    text >=1.2 && <1.3,

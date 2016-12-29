@@ -69,6 +69,13 @@ primEnv = [ -- Basic math.
             ("procedure?",  mkF $ unop isProcedure),
             ("string?",     mkF $ unop isString),
 
+            -- Characters.
+            ("char=?",      mkF $ binop (chEqOp (==))),
+            ("char<?",      mkF $ binop (chEqOp (<))),
+            ("char>?",      mkF $ binop (chEqOp (>))),
+            ("char<=?",     mkF $ binop (chEqOp (<=))),
+            ("char>=?",     mkF $ binop (chEqOp (>=))),
+
             -- Strings.
             -- NEEDS TESTS
             ("string=?",        mkF $ binop     (strEqOp  (==))),
@@ -145,6 +152,12 @@ strEqOp op (String x) (String y) = return $ Bool $ op x y
 strEqOp _  x          (String _) = throw $ TypeMismatch "String" x
 strEqOp _  (String _) y          = throw $ TypeMismatch "String" y
 strEqOp _  x          _          = throw $ TypeMismatch "String" x
+
+chEqOp :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
+chEqOp op (Character x) (Character y) = return $ Bool $ op x y
+chEqOp _  x             (Character _) = throw $ TypeMismatch "Char" x
+chEqOp _  (Character _) y             = throw $ TypeMismatch "Char" y
+chEqOp _  x          _                = throw $ TypeMismatch "Char" x
 
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y

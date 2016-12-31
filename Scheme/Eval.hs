@@ -265,7 +265,7 @@ eval (List [Atom "let", List pairs, expr]) = do
     vals  <- mapM eval       $ getVals pairs
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
         evalBody expr
-eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(let <pairs> <s-expr>)"
+eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of parameters and s-expression body\n(let <pairs> <s-expr>)"
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
@@ -273,7 +273,7 @@ eval (List (Atom "let":_) ) = throw $ BadSpecialForm "lambda function expects li
 eval (List [Atom "lambda", List params, expr]) = do
     envLocal <- get
     return  $ Lambda (IFunc $ applyLambda expr params) envLocal
-eval (List (Atom "lambda":_) ) = throw $ BadSpecialForm "lambda function expects list of parameters and S-Expression body\n(lambda <params> <s-expr>)"
+eval (List (Atom "lambda":_)) = throw $ BadSpecialForm "lambda function expects list of parameters and s-expression body\n(lambda <params> <s-expr>)"
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If
 -- so, see if it's a primitive, lambda, or normal user-defined function.  Act appropriately.  For a

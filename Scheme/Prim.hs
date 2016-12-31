@@ -90,8 +90,6 @@ primEnv = [ -- Basic math.
             ("string>=?",       mkF $ binop     (strEqOp  (>=))),
             -- NEEDS TESTS
             ("string-append",   mkF $ binopFold (strOp    (<>)) (String "")),
-            -- NEEDS TESTS
-            ("string-length",   mkF $ unop      strLength),
 
             -- Lists.
             ("cons",    mkF Scheme.Prim.cons),
@@ -240,14 +238,6 @@ cdr x             = throw $ Unknown $ T.concat $ ["Error in cdr: "] ++ map showV
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
-
---
--- STRINGS
---
-
-strLength :: LispVal -> Eval LispVal
-strLength (String s) = return $ Number (toInteger $ T.length s)
-strLength x          = throw $ TypeMismatch "string" x
 
 --
 -- IO

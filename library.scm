@@ -85,6 +85,9 @@
 (define cdddar (lambda (x) (cdr (cdr (cdr (car x))))))
 (define cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
 
+; Strings
+(define (string-length s) (length (string->list s)))
+
 ; Functions.
 ; NEEDS TESTS
 (define (compose f g) (lambda (arg) (f (g arg))))

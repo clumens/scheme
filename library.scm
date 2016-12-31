@@ -5,11 +5,8 @@
 (define (dec x) (- x 1))
 ; NEEDS TESTS
 (define (inc x) (+ x 1))
-; NEEDS TESTS
 (define (negative? x) (< x 0))
-; NEEDS TESTS
 (define (positive? x) (> x 0))
-; NEEDS TESTS
 (define (zero? x) (= x 0))
 
 ; Booleans.

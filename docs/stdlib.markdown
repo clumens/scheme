@@ -51,6 +51,10 @@ Returns the number of elements in `list`.
 
 Returns `#t` if `obj` is a list, otherwise returns `#f`.
 
+`(negative? obj)`
+
+Returns `#t` when `obj` is less than zero, otherwise returns `#f`.
+
 `(not obj)`
 
 Returns `#t` if `obj` is `#f`, otherwise returns `#f`.
@@ -62,6 +66,10 @@ Returns `#t` if `obj` is the empty list, otherwise returns `#f`.
 `(number? obj)`
 
 Returns `#t` if `obj` is a number, otherwise returns `#f`.
+
+`(positive? obj)`
+
+Returns `#t` when `obj` is greater than zero, otherwise returns `#f`.
 
 `(procedure? obj)`
 
@@ -97,3 +105,7 @@ Evaluate the `test` expression.  If it evaluates to `#t`, evaluate `expr` and re
 the result of the entire expression.  Otherwise, return the implementation-defined value of
 `#f`.  **NOTE:** This function differs from standard scheme.  Only one expression is
 supported.  This may be fixed.
+
+`(zero? obj)`
+
+Returns `#t` when `obj` is equal to zero, otherwise returns `#f`.

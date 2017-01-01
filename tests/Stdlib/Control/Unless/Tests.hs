@@ -16,4 +16,4 @@ testData = [
  ]
 
 tests :: TestTree
-tests = testGroup "not" $ mkTests testData
+tests = testGroup "unless" $ mkTests testData

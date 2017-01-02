@@ -52,7 +52,7 @@ parseAtom = do
 parseText :: Parser LispVal
 parseText = do
   reservedOp "\""
-  p <- many1 $ noneOf "\""
+  p <- many $ noneOf "\""
   reservedOp "\""
   return $ String . T.pack $  p
 

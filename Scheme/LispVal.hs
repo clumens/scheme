@@ -23,15 +23,15 @@ newtype Eval a = Eval { unEval :: StateT EnvCtx IO a }
   deriving (Applicative, Functor, Monad, MonadIO, MonadState EnvCtx)
 
 data LispVal = Atom T.Text
-             | List [LispVal]
-             | Number Integer
-             | String T.Text
+             | Bool Bool
              | Character Char
-             | PrimitiveFunc IFunc
              | Func [T.Text] IFunc
              | Lambda IFunc EnvCtx
+             | List [LispVal]
              | Nil
-             | Bool Bool
+             | Number Integer
+             | PrimitiveFunc IFunc
+             | String T.Text
  deriving (Show, Typeable)
 
 data IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
@@ -43,26 +43,26 @@ instance Show IFunc where
 showVal :: LispVal -> T.Text
 showVal val = case val of
     Atom atom       -> atom
-    String txt      -> T.concat [ "\"" , txt, "\""]
-    Character ch    -> T.singleton ch
-    Number num      -> T.pack $ show num
     Bool True       -> "#t"
     Bool False      -> "#f"
-    Nil             -> "Nil"
-    List contents   -> T.concat ["(", unwordsList contents, ")"]
-    PrimitiveFunc _ -> "(internal function)"
+    Character ch    -> T.singleton ch
     Func _ _        -> "(user function)"
     Lambda _ _      -> "(lambda function)"
+    List contents   -> T.concat ["(", unwordsList contents, ")"]
+    Nil             -> "Nil"
+    Number num      -> T.pack $ show num
+    PrimitiveFunc _ -> "(internal function)"
+    String txt      -> T.concat [ "\"" , txt, "\""]
 
 typeOf :: LispVal -> T.Text
 typeOf val = case val of
     Atom _      -> "Atom"
-    String _    -> "String"
-    Character _ -> "Character"
-    Number _    -> "Number"
     Bool _      -> "Bool"
-    Nil         -> "Nil"
+    Character _ -> "Character"
     List _      -> "List"
+    Nil         -> "Nil"
+    Number _    -> "Number"
+    String _    -> "String"
     _           -> "Function"
 
 unwordsList :: [LispVal] -> T.Text

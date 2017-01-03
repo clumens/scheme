@@ -205,7 +205,6 @@ isNumber _          = return $ Bool False
 
 isProcedure :: LispVal -> Eval LispVal
 isProcedure (PrimitiveFunc _)   = return $ Bool True
-isProcedure (Func _ _)          = return $ Bool True
 isProcedure (Lambda _ _)        = return $ Bool True
 isProcedure _                   = return $ Bool False
 

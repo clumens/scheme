@@ -251,8 +251,7 @@ eval (List [Atom "define", varAtom@(Atom _), expr]) = do
 eval (List [Atom "define", List params, expr]) = do
     varParams <- mapM ensureAtom params
     let name = head varParams
-    let fn = Func (map extractVar $ tail varParams)
-                  (IFunc $ applyLambda expr params)
+    let fn = PrimitiveFunc $ IFunc $ applyLambda expr (tail varParams)
     modify (Map.insert (extractVar name) fn)
     return name
 
@@ -265,6 +264,7 @@ eval (List [Atom "let", List pairs, expr]) = do
     vals  <- mapM eval       $ getVals pairs
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
         evalBody expr
+
 -- Named let allows you do give a name to the body of the let, and then refer to this name within the body.
 -- This lets you define a recursive or looping function.  This function takes as parameters everything
 -- defined in the bindings section of the let, and those bindings have the given initial values.
@@ -279,8 +279,7 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
     -- Add another binding to the environment - a function with the name given, and whose body is the body
     -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
     let atoms'  = [Atom name] ++ atoms
-    let fn      = Func (map extractVar atoms)
-                       (IFunc $ applyLambda expr [])
+    let fn      = PrimitiveFunc $ IFunc $ applyLambda expr atoms
     let vals'   = [fn] ++ vals
 
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
@@ -304,7 +303,6 @@ eval (List (x:xs)) = do
     xVal   <- mapM eval xs
     case funVar of
         PrimitiveFunc (IFunc internalFn)    -> internalFn xVal
-        Func params (IFunc internalFn)      -> augmentEnv (zip params xVal) (internalFn [])
         Lambda (IFunc internalFn) boundenv  -> replaceEnv boundenv (internalFn xVal)
         _                                   -> throw $ NotFunction funVar
 

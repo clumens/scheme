@@ -84,6 +84,16 @@ Returns a new list consisting of the elements of `list` in reverse order.
 
 Returns `#t` if `obj` is a string, otherwise returns `#f`.
 
+`(string=? str1 str2)`
+`(string<? str1 str2)`
+`(string>? str1 str2)`
+`(string<=? str1 str2)`
+`(string>=? str1 str2)`
+
+These functions are used to compare two strings, returning `#t` or `#f` as appropriate.
+**NOTE:** These functions differ from standard scheme.  They only take two strings
+instead of a variable number of strings.  This may be fixed.
+
 `(string->list str)`
 
 Convert `str` into a list of characters.

@@ -26,7 +26,7 @@ style = Lang.emptyDef { Tok.commentStart = "{-",
                         Tok.opLetter = oneOf ":!#$%%&*+./<=>?@\\^|-~",
                         Tok.identStart = letter <|>  oneOf "-+/*=|&><",
                         Tok.identLetter = alphaNum <|> oneOf "?+<=>|&-/",
-                        Tok.reservedOpNames = [ "'", "\""] }
+                        Tok.reservedOpNames = [ ".", "'", "\""] }
 
 -- pattern binding using record destructing !
 Tok.TokenParser { Tok.parens = m_parens,
@@ -91,6 +91,7 @@ parseReserved :: Parser LispVal
 parseReserved = (reservedOp "Nil" >> return Nil)
             <|> (reservedOp "#t" >> return (Bool True))
             <|> (reservedOp "#f" >> return (Bool False))
+            <|> (reservedOp "." >> return (Atom "."))
 
 contents :: Parser a -> Parser a
 contents p = do

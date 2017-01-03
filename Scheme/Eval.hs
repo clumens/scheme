@@ -265,6 +265,26 @@ eval (List [Atom "let", List pairs, expr]) = do
     vals  <- mapM eval       $ getVals pairs
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
         evalBody expr
+-- Named let allows you do give a name to the body of the let, and then refer to this name within the body.
+-- This lets you define a recursive or looping function.  This function takes as parameters everything
+-- defined in the bindings section of the let, and those bindings have the given initial values.
+-- Example: (let loop ((x 10))
+--                    (if (zero? x)
+--                        (write "All done")
+--                        (loop (dec x))))
+eval (List [Atom "let", Atom name, List pairs, expr]) = do
+    atoms <- mapM ensureAtom $ getNames pairs
+    vals  <- mapM eval       $ getVals pairs
+
+    -- Add another binding to the environment - a function with the name given, and whose body is the body
+    -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
+    let atoms'  = [Atom name] ++ atoms
+    let fn      = Func (map extractVar atoms)
+                       (IFunc $ applyLambda expr [])
+    let vals'   = [fn] ++ vals
+
+    augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
+        evalBody expr
 eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of parameters and s-expression body\n(let <pairs> <s-expr>)"
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the

@@ -53,9 +53,11 @@ primEnv = [ -- Basic math.
 
             -- Booleans.
             -- NEEDS TESTS
-            ("and",     mkF $ binopFold (eqOp   (&&)) (Bool True)),
+            ("boolean=?",   mkF $ binop eqBoolean),
             -- NEEDS TESTS
-            ("or",      mkF $ binopFold (eqOp   (||)) (Bool False)),
+            ("and",         mkF $ binopFold (eqOp   (&&)) (Bool True)),
+            -- NEEDS TESTS
+            ("or",          mkF $ binopFold (eqOp   (||)) (Bool False)),
 
             -- Equivalence.
             -- NEEDS TESTS
@@ -70,7 +72,7 @@ primEnv = [ -- Basic math.
             ("string?",     mkF $ unop isString),
 
             -- Characters.
-            ("char=?",      mkF $ binop (chEqOp (==))),
+            ("char=?",      mkF $ binop eqCharacter),
             ("char<?",      mkF $ binop (chEqOp (<))),
             ("char>?",      mkF $ binop (chEqOp (>))),
             ("char<=?",     mkF $ binop (chEqOp (<=))),
@@ -159,25 +161,32 @@ numCmp _  (Number _) y          = throw $ TypeMismatch "Number" y
 numCmp _  x          _          = throw $ TypeMismatch "Number" x
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
-equivalent (Atom   x) (Atom   y) = return . Bool $ x == y
-equivalent (Number x) (Number y) = return . Bool $ x == y
-equivalent (String x) (String y) = return . Bool $ x == y
-equivalent (Bool   x) (Bool   y) = return . Bool $ x == y
-equivalent (List [])  (List [])  = return $ Bool True
-equivalent Nil        Nil        = return $ Bool True
-equivalent _          _          = return $ Bool False
+equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
+equivalent x@(Bool _)      y@(Bool _)       = eqBoolean x y
+equivalent x@(Character _) y@(Character _)  = eqCharacter x y
+equivalent (List [])  (List [])             = return $ Bool True
+equivalent Nil        Nil                   = return $ Bool True
+equivalent (Number x) (Number y)            = return . Bool $ x == y
+equivalent (String x) (String y)            = return . Bool $ x == y
+equivalent _          _                     = return $ Bool False
 
 --
--- TYPE PREDICATES
+-- TYPE MANIPULATIONS
 --
 
 isBoolean :: LispVal -> Eval LispVal
 isBoolean (Bool _)  = return $ Bool True
 isBoolean _         = return $ Bool False
 
+eqBoolean :: LispVal -> LispVal -> Eval LispVal
+eqBoolean x y = eqOp (==) x y
+
 isCharacter :: LispVal -> Eval LispVal
 isCharacter (Character _) = return $ Bool True
 isCharacter _             = return $ Bool False
+
+eqCharacter :: LispVal -> LispVal -> Eval LispVal
+eqCharacter x y = chEqOp (==) x y
 
 isList :: LispVal -> Eval LispVal
 isList (List _)     = return $ Bool True

@@ -52,7 +52,23 @@
             '()
             (cons (fn (car lst))
                   (map fn (cdr lst)))))
+; NEEDS TESTS
+(define (memp fn lst)
+        (cond ((null? lst)      #f)
+              ((fn (car lst))   lst)
+              (else             (memp fn (cdr lst)))))
+; NEEDS TESTS
+(define (memq obj lst)
+        (cond ((null? lst)          #f)
+              ((eqv? obj (car lst)) lst)
+              (else                 (memq obj (cdr lst)))))
 (define (null? x) (eqv? '() x))
+; NEEDS TESTS
+(define (remp fn lst)
+        (filter (compose not fn) lst))
+; NEEDS TESTS
+(define (remq obj lst)
+        (filter (lambda (x) (not (eqv? obj x))) lst))
 (define (reverse lst)
         (fold-left (flip cons) '() lst))
 

@@ -1,3 +1,9 @@
+`(and test1 ... testn)`
+
+Returns `#t` if all test expressions evaluate to `#t`, or if there are no test expressions.
+Otherwise, returns `#f`.  **NOTE:** This function differs from standard scheme.  It does not
+return the value of the last test.
+
 `(boolean? obj)`
 
 Returns `#t` if `obj` is a boolean, otherwise returns `#f`.
@@ -70,6 +76,12 @@ Returns `#t` if `obj` is the empty list, otherwise returns `#f`.
 `(number? obj)`
 
 Returns `#t` if `obj` is a number, otherwise returns `#f`.
+
+`(or test1 ... testn)`
+
+Returns `#t` if any test expression evaluates to `#t`.  Otherwise, returns `#f` (including if
+there are no test expressions).  **NOTE:** This function differs from standard scheme.  It
+does not return the value of the last test.
 
 `(positive? obj)`
 

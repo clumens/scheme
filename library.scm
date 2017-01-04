@@ -10,7 +10,17 @@
 (define (zero? x) (= x 0))
 
 ; Booleans.
+(define (and . objs)
+        (let loop ((lst objs))
+             (cond ((null? lst)     #t)
+                   ((not (car lst)) #f)
+                   (else            (loop (cdr lst))))))
 (define (not x) (if (eqv? x #f) #t #f))
+(define (or . objs)
+        (let loop ((lst objs))
+             (cond ((null? lst)     #f)
+                   ((car lst)       #t)
+                   (else            (loop (cdr lst))))))
 
 ; Control.
 (define (unless test expr) (if test #f expr))

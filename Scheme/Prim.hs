@@ -54,10 +54,6 @@ primEnv = [ -- Basic math.
             -- Booleans.
             -- NEEDS TESTS
             ("boolean=?",   mkF $ binop eqBoolean),
-            -- NEEDS TESTS
-            ("and",         mkF $ binopFold (eqOp   (&&)) (Bool True)),
-            -- NEEDS TESTS
-            ("or",          mkF $ binopFold (eqOp   (||)) (Bool False)),
 
             -- Equivalence.
             -- NEEDS TESTS

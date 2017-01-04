@@ -79,11 +79,15 @@ primEnv = [ -- Basic math.
             ("char>=?",     mkF $ binop (chEqOp (>=))),
 
             -- Strings.
+            -- NEEDS TESTS
+            ("list->string",    mkF $ unop $ return . listToString),
             ("string->list",    mkF $ unop $ return . stringToList),
             -- NEEDS TESTS
             ("string-append",   mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
+            -- NEEDS TESTS
+            ("append",  mkF $ binopFold append (List [])),
             ("cons",    mkF Scheme.Prim.cons),
             ("car",     mkF Scheme.Prim.car),
             ("cdr",     mkF Scheme.Prim.cdr),
@@ -101,6 +105,15 @@ primEnv = [ -- Basic math.
             ("file-exists?",    mkF $ unop fileExists),
             -- FIXME: Replace these with real versions.
             ("slurp",           mkF $ unop slurp) ]
+
+listToString :: LispVal -> LispVal
+listToString (List l) = let
+    doit accum []                   = String accum
+    doit accum (Character c:rest)   = doit (accum `T.append` T.singleton c) rest
+    doit _ (x:_)                    = throw $ TypeMismatch "Character" x
+ in
+    doit "" l
+listToString x        = throw $ TypeMismatch "List" x
 
 stringToList :: LispVal -> LispVal
 stringToList (String s) = List $ map Character (T.unpack s)
@@ -208,6 +221,10 @@ isString _          = return $ Bool False
 --
 -- LISTS
 --
+
+append :: LispVal -> LispVal -> Eval LispVal
+append (List x) (List y) = return $ List $ x ++ y
+append _ _               = throw $ Unknown "append got something other than a list"
 
 cons :: [LispVal] -> Eval LispVal
 cons [x, List yList]    = return $ List $ x:yList

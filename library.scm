@@ -104,6 +104,8 @@
 (define cddddr (lambda (x) (cdr (cdr (cdr (cdr x))))))
 
 ; Strings
+; NEEDS TESTS
+(define (string . chars) (list->string chars))
 (define (string=? s1 s2)
         (let loop ((lst1 (string->list s1))
                    (lst2 (string->list s2)))

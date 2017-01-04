@@ -40,8 +40,6 @@ primEnv = [ -- Basic math.
             ("even?",   mkF $ unop      (numBool even)),
             -- NEEDS TESTS
             ("odd?" ,   mkF $ unop      (numBool odd)),
-
-            -- Booleans.
             -- NEEDS TESTS
             ("<",       mkF $ binop     (numCmp (<))),
             -- NEEDS TESTS
@@ -52,6 +50,8 @@ primEnv = [ -- Basic math.
             ("<=",      mkF $ binop     (numCmp (>=))),
             -- NEEDS TESTS
             ("=",       mkF $ binop     (numCmp (==))),
+
+            -- Booleans.
             -- NEEDS TESTS
             ("and",     mkF $ binopFold (eqOp   (&&)) (Bool True)),
             -- NEEDS TESTS

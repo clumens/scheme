@@ -298,6 +298,36 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
             modify (Map.insert name' fn)
             return (Atom name')
 
+eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, Atom predicate]) = do
+    -- Verify superTy exists in the environment before doing anything else.
+
+    -- The constructor is a function that takes a single argument (the error string) and returns
+    -- a new Error value containing that argument.  We have to pack up the type of the error as
+    -- well, so other functions can operate on it.  This will not be exposed to the user (except
+    -- indirectly, through the predicate functions).
+    let constrFn = Func (IFunc $ \args -> makeConstrFn ty args) Nothing
+    modify (Map.insert constr constrFn)
+
+    -- The predicate is a function that takes a single argument (a condition object) and returns
+    -- a boolean indicating whether that object is of this condition's type or any of its supertypes.
+    let predFn = Func (IFunc $ \args -> makePredFn args) Nothing
+    modify (Map.insert predicate predFn)
+
+    -- Add the condition type to the environment.  Note that while conditions take an optional supertype,
+    -- the optional part is only so a base condition can be defined in the primitive environment.  No
+    -- user-defined condition can ever exist without a supertype.  We enforce that here with pattern
+    -- matching on the define-condition-type call.
+    modify (Map.insert ty (ErrorType $ Just superTy))
+    return (Atom ty)
+ where
+    makeConstrFn t [String msg] = return $ Error t msg
+    makeConstrFn _ [x]          = throw $ TypeMismatch "condition constructor expects String" x
+    makeConstrFn _ x            = throw $ NumArgs 1 x
+
+    makePredFn [Error _ _]      = return $ Bool False
+    makePredFn [x]              = throw $ TypeMismatch "predicate function expected Error" x
+    makePredFn x                = throw $ NumArgs 1 x
+
 -- Locally define a list of variables, add them to the environment, and then execute the body in that
 -- environment.
 -- Example: (let ((x 1) (y 2)) (+ x y))

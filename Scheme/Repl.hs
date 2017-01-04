@@ -29,7 +29,7 @@ validWords :: EnvCtx -> [T.Text]
 validWords env = sort $
     Map.keys env ++
     -- Add special words defined in Eval.hs.
-    ["apply", "begin", "cond", "define", "else", "lambda", "let", "if", "quote"]
+    ["apply", "begin", "cond", "define", "define-condition-type", "else", "lambda", "let", "if", "quote"]
 
 mainLoop :: EnvCtx -> IO ()
 mainLoop env = do

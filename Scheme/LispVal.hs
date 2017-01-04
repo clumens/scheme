@@ -49,7 +49,7 @@ showVal val = case val of
     Bool True       -> "#t"
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
-    Error ty msg    -> T.concat ["Error (", ty, "): ", msg]
+    Error ty msg    -> T.concat ["Error (", ty, "):\n", msg]
     ErrorType _     -> "(error type)"
     Func _ _        -> "(function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]

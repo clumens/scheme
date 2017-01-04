@@ -4,7 +4,7 @@ module Scheme.Prim(primEnv,
                    unop)
  where
 
-import Scheme.Exceptions(LispException(..))
+import Scheme.Exceptions(LispException(..), numArgsMessage)
 import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 
 import           Control.Exception(throw)
@@ -113,17 +113,17 @@ mkF :: ([LispVal] -> Eval LispVal) -> LispVal
 mkF fn = Func (IFunc fn) Nothing
 
 unop :: Unary -> [LispVal] -> Eval LispVal
-unop op [x]    = op x
-unop _ args    = throw $ NumArgs 1 args
+unop op [x]     = op x
+unop _ args     = return $ Error "syntax-error" (numArgsMessage 1 args)
 
 binop :: Binary -> [LispVal] -> Eval LispVal
 binop op [x,y]  = op x y
-binop _  args   = throw $ NumArgs 2 args
+binop _  args   = return $ Error "syntax-error" (numArgsMessage 1 args)
 
 binopFold :: Binary -> LispVal -> [LispVal] -> Eval LispVal
 binopFold op _ [a, b]         = op a b
 binopFold op farg args@(_:_)  = foldM op farg args
-binopFold _ _ args@[]         = throw $ NumArgs 2 args
+binopFold _ _ args@[]         = return $ Error "syntax-error" (numArgsMessage 2 args)
 
 numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 numOp op (Number x) (Number y) = return $ Number $ op x  y

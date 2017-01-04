@@ -25,11 +25,11 @@ newtype Eval a = Eval { unEval :: StateT EnvCtx IO a }
 data LispVal = Atom T.Text
              | Bool Bool
              | Character Char
+             | Func IFunc
              | Lambda IFunc EnvCtx
              | List [LispVal]
              | Nil
              | Number Integer
-             | PrimitiveFunc IFunc
              | String T.Text
  deriving (Show, Typeable)
 
@@ -45,11 +45,11 @@ showVal val = case val of
     Bool True       -> "#t"
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
+    Func _          -> "(function)"
     Lambda _ _      -> "(lambda function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]
     Nil             -> "Nil"
     Number num      -> T.pack $ show num
-    PrimitiveFunc _ -> "(function)"
     String txt      -> T.concat [ "\"" , txt, "\""]
 
 typeOf :: LispVal -> T.Text

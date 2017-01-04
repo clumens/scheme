@@ -79,17 +79,7 @@ primEnv = [ -- Basic math.
             -- Strings.
             ("string->list",    mkF $ unop $ return . stringToList),
             -- NEEDS TESTS
-            ("string=?",        mkF $ binop     (strEqOp  (==))),
-            -- NEEDS TESTS
-            ("string<?",        mkF $ binop     (strEqOp  (<))),
-            -- NEEDS TESTS
-            ("string>?",        mkF $ binop     (strEqOp  (>))),
-            -- NEEDS TESTS
-            ("string<=?",       mkF $ binop     (strEqOp  (<=))),
-            -- NEEDS TESTS
-            ("string>=?",       mkF $ binop     (strEqOp  (>=))),
-            -- NEEDS TESTS
-            ("string-append",   mkF $ binopFold (strOp    (<>)) (String "")),
+            ("string-append",   mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
             ("cons",    mkF Scheme.Prim.cons),
@@ -149,12 +139,6 @@ strOp op (String x) (String y) = return $ String $ op x y
 strOp _  x          (String _) = throw $ TypeMismatch "String " x
 strOp _  (String _) y          = throw $ TypeMismatch "String " y
 strOp _  x          _          = throw $ TypeMismatch "String " x
-
-strEqOp :: (T.Text -> T.Text -> Bool) -> LispVal -> LispVal -> Eval LispVal
-strEqOp op (String x) (String y) = return $ Bool $ op x y
-strEqOp _  x          (String _) = throw $ TypeMismatch "String" x
-strEqOp _  (String _) y          = throw $ TypeMismatch "String" y
-strEqOp _  x          _          = throw $ TypeMismatch "String" x
 
 chEqOp :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
 chEqOp op (Character x) (Character y) = return $ Bool $ op x y

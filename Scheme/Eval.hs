@@ -36,7 +36,7 @@ import           Data.Monoid((<>))
 -- Do I even want that here?
 basicEnv :: EnvCtx
 basicEnv = Map.fromList $ primEnv
-          <> [("read", Func $ IFunc $ unop readFn)]
+          <> [("read", Func (IFunc $ unop readFn) Nothing)]
 
 -- Temporarily augment the environment with a set of new bindings (which take precedence over
 -- whatever was in the environment before), and execute fn in that environment.  Then restore
@@ -249,7 +249,7 @@ eval (List [Atom "define", varAtom@(Atom _), expr]) = do
 -- body of a begin or let expression.
 -- Example: (define (list . objs) objs)
 eval (List [Atom "define", List [Atom name, Atom ".", formal@(Atom _)], expr]) = do
-    let fn = Func $ IFunc $ \args -> applyLambda expr [formal] [List args]
+    let fn = Func (IFunc $ \args -> applyLambda expr [formal] [List args]) Nothing
     modify (Map.insert name fn)
     return (Atom name)
 
@@ -260,7 +260,7 @@ eval (List [Atom "define", List [Atom name, Atom ".", formal@(Atom _)], expr]) =
 eval (List [Atom "define", List params, expr]) = do
     varParams <- mapM ensureAtom params
     let name = head varParams
-    let fn = Func $ IFunc $ applyLambda expr (tail varParams)
+    let fn = Func (IFunc $ applyLambda expr (tail varParams)) Nothing
     modify (Map.insert (extractVar name) fn)
     return name
 
@@ -288,7 +288,7 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
     -- Add another binding to the environment - a function with the name given, and whose body is the body
     -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
     let atoms'  = [Atom name] ++ atoms
-    let fn      = Func $ IFunc $ applyLambda expr atoms
+    let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
     let vals'   = [fn] ++ vals
 
     augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
@@ -300,7 +300,7 @@ eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of paramet
 -- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) = do
     envLocal <- get
-    return  $ Lambda (IFunc $ applyLambda expr params) envLocal
+    return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
 eval (List (Atom "lambda":_)) = throw $ BadSpecialForm "lambda function expects list of parameters and s-expression body\n(lambda <params> <s-expr>)"
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If
@@ -311,9 +311,9 @@ eval (List (x:xs)) = do
     funVar <- eval x
     xVal   <- mapM eval xs
     case funVar of
-        Func (IFunc internalFn)             -> internalFn xVal
-        Lambda (IFunc internalFn) boundenv  -> replaceEnv boundenv (internalFn xVal)
-        _                                   -> throw $ NotFunction funVar
+        Func (IFunc internalFn) Nothing         -> internalFn xVal
+        Func (IFunc internalFn) (Just bound)    -> replaceEnv bound (internalFn xVal)
+        _                                       -> throw $ NotFunction funVar
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
 -- that's an error.

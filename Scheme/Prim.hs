@@ -120,7 +120,7 @@ stringToList _          = List []
 --
 
 mkF :: ([LispVal] -> Eval LispVal) -> LispVal
-mkF = Func . IFunc
+mkF fn = Func (IFunc fn) Nothing
 
 unop :: Unary -> [LispVal] -> Eval LispVal
 unop op [x]    = op x
@@ -206,9 +206,8 @@ isNumber (Number _) = return $ Bool True
 isNumber _          = return $ Bool False
 
 isProcedure :: LispVal -> Eval LispVal
-isProcedure (Func _)        = return $ Bool True
-isProcedure (Lambda _ _)    = return $ Bool True
-isProcedure _               = return $ Bool False
+isProcedure (Func _ _)  = return $ Bool True
+isProcedure _           = return $ Bool False
 
 isString :: LispVal -> Eval LispVal
 isString (String _) = return $ Bool True

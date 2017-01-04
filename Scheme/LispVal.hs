@@ -25,8 +25,7 @@ newtype Eval a = Eval { unEval :: StateT EnvCtx IO a }
 data LispVal = Atom T.Text
              | Bool Bool
              | Character Char
-             | Func IFunc
-             | Lambda IFunc EnvCtx
+             | Func IFunc (Maybe EnvCtx)
              | List [LispVal]
              | Nil
              | Number Integer
@@ -45,8 +44,7 @@ showVal val = case val of
     Bool True       -> "#t"
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
-    Func _          -> "(function)"
-    Lambda _ _      -> "(lambda function)"
+    Func _ _        -> "(function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]
     Nil             -> "Nil"
     Number num      -> T.pack $ show num

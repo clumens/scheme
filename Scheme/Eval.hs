@@ -180,8 +180,7 @@ getVals _                = throw $ BadSpecialForm "let bindings list malformed"
 --
 -- eval - This function is used to evaluate a single scheme expression.  It takes a lot of forms, because
 -- there are a lot of possibilities.  This function can't handle a list of expressions, like would be found
--- in a file.  For that, see evalBody.  Some complicated expression forms end up calling evalBody on their
--- own.
+-- in a file.  For that, see evalBody.
 --
 
 -- Primitive values - obvious.
@@ -235,19 +234,29 @@ eval (List [Atom "begin", rest]) = evalBody rest
 eval (List (Atom "begin":rest))  = evalBody $ List rest
 
 -- Define a single variable, giving it the value found by evaluating expr.  The variable is added to the
--- global environment since define can only occur at the top-level.
+-- global environment since define can only occur at the top-level or at the beginning of the body of a
+-- begin or let expression.
 -- Example: (define x "hello, world!")
 --          (define y (lambda (x) (+ 1 x)))
--- FIXME:  Is that restriction being enforced?
 eval (List [Atom "define", varAtom@(Atom _), expr]) = do
     evalVal <- eval expr
     modify (Map.insert (extractVar varAtom) evalVal)
     return varAtom
 
+-- Define a function with a single parameter and a body.  At function application time, all arguments passed
+-- will be condensed down into a list and that list will be passed as the single parameter.  The function
+-- is added to the global environment since it can only occur at the top-level or at the beginning of the
+-- body of a begin or let expression.
+-- Example: (define (list . objs) objs)
+eval (List [Atom "define", List [Atom name, Atom ".", formal@(Atom _)], expr]) = do
+    let fn = PrimitiveFunc $ IFunc $ \args -> applyLambda expr [formal] [List args]
+    modify (Map.insert name fn)
+    return (Atom name)
+
 -- Define a function with a list of parameters (the first of which is the name of the function) and a body.
--- The function is added to the global environment since define can only occur at the top-level.
+-- The function is added to the global environment since define can only occur at the top-level or at the
+-- beginning of the body of a begin or let expression.
 -- Example: (define (inc x) (+ 1 x))
--- FIXME:  Is that restriction being enforced?
 eval (List [Atom "define", List params, expr]) = do
     varParams <- mapM ensureAtom params
     let name = head varParams
@@ -311,10 +320,11 @@ eval (List (x:xs)) = do
 eval x = throw $ Default  x
 
 --
--- evalBody - This function is used to evaluate an entire file, the body of a let expression, and the
--- body of a begin expression.  In other words, it processes a list of things instead of just a single
--- expression.  In general, the first part of the argument pattern matches a single expression and
--- "rest" holds everything else in the body.  The rest gets processed by calling evalBody on it again.
+-- evalBody - This function is used to evaluate an entire file, or the beginning of the body of a let
+-- or begin expression.  In other words, it processes a list of things where definitions can occur
+-- intead of just a single expression.  In general, the first part of the argument pattern matches a
+-- single expression and "rest" holds everything else in the body.  "rest" gets processed by calling
+-- evalBody on it again.
 --
 
 -- I have no idea when this form gets used.

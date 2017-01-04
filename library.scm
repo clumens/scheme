@@ -45,6 +45,8 @@
               (else             #f)))
 (define (length lst) (fold-left inc 0 lst))
 ; NEEDS TESTS
+(define (list . objs) objs)
+; NEEDS TESTS
 (define (map fn lst)
         (if (null? lst)
             '()

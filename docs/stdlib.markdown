@@ -47,6 +47,10 @@ returning the matching value.  This may not be fixed.
 
 Returns the number of elements in `list`.
 
+`(list obj1 ... objn)`
+
+Returns a new list containing all its arguments.
+
 `(list? obj)`
 
 Returns `#t` if `obj` is a list, otherwise returns `#f`.

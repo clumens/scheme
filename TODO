@@ -19,7 +19,6 @@
 * add records (?)
 * add unquote and quasiquote (?)
 * more vararg syntax support:
-    (define (map fn . lsts) ...)
     (lambda lst ...)
     (lambda (fn . lst) ...)
 * add vararg syntax to lambdas

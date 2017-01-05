@@ -244,30 +244,45 @@ eval (List [Atom "define", varAtom@(Atom _), expr]) = do
     modify (Map.insert (extractVar varAtom) evalVal)
     return varAtom
 
--- Define a function with a single parameter and a body.  At function application time, all arguments passed
--- will be condensed down into a list and that list will be passed as the single parameter.  The function
--- is added to the global environment since it can only occur at the top-level or at the beginning of the
--- body of a begin or let expression.
--- Example: (define (list . objs) objs)
-eval (List [Atom "define", List [Atom name, Atom ".", formal@(Atom _)], expr]) = do
-    let fn = Func (IFunc $ \args -> applyLambda expr [formal] [List args]) Nothing
-    modify (Map.insert name fn)
-    return (Atom name)
-
 -- Define a function with a list of parameters (the first of which is the name of the function) and a body.
--- The function is added to the global environment since define can only occur at the top-level or at the
--- beginning of the body of a begin or let expression.
+-- The list of parameters may optionally include a ".", in which case one parameter may follow the dot.  At
+-- function application time, all arguments that do not match up with a formal parameter will be condensed
+-- down into a list and that list will be passed as the single parameter after the dot.
 -- Example: (define (inc x) (+ 1 x))
-eval (List [Atom "define", List params, expr]) = do
-    varParams <- mapM ensureAtom params
-    let name = head varParams
-    let formals = tail varParams
+--          (define (list . objs) objs)
+--          (define (map fn . lsts) ...)
+eval (List [Atom "define", List (Atom name:params), expr]) = do
+    case break (== Atom ".") params of
+        (p, [])                     -> evalNormalFunc name p
+        (p, [Atom ".", Atom rest])  -> evalSpecialFunc name p rest
+        _                           -> throw $ BadSpecialForm "only one parameter may appear after '.'"
+ where
+    evalNormalFunc name' params' = do
+        -- Done for side effect - make sure all params are atoms.
+        mapM_ ensureAtom params'
 
-    if nub formals /= formals then throw $ BadSpecialForm "duplicate names given in formal parameters list"
-    else do
-        let fn = Func (IFunc $ applyLambda expr formals) Nothing
-        modify (Map.insert (extractVar name) fn)
-        return name
+        if nub params' /= params' then throw $ BadSpecialForm "duplicate names given in formal parameters list"
+        else do
+            let fn = Func (IFunc $ applyLambda expr params') Nothing
+            modify (Map.insert name' fn)
+            return (Atom name')
+
+    evalSpecialFunc name' params' extra = do
+        -- Done for side effect - make sure all params are atoms.  extra was already checked via
+        -- pattern matching.
+        mapM_ ensureAtom params'
+
+        -- Make sure parameter names aren't duplicated, and that includes the extra one.
+        let allParams = params' ++ [Atom extra]
+
+        if nub allParams /= allParams then throw $ BadSpecialForm "duplicate names given in formal parameters list"
+        else do
+            let fn = Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
+                                            in  applyLambda expr (params' ++ [Atom extra])
+                                                                 (matched ++ [List rest]))
+                          Nothing
+            modify (Map.insert name' fn)
+            return (Atom name')
 
 -- Locally define a list of variables, add them to the environment, and then execute the body in that
 -- environment.

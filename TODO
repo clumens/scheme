@@ -1,18 +1,17 @@
 * add functions to the standard library:
     - Char: char->integer, char-alphabetic?, char-downcase, char-numeric?, char-upcase, char-whitespace?, integer->char
+    - Control: case
     - IO: ???
-    - List: list-tail
+    - List: list-ref, list-tail
     - Math: div, max, min, mod, number->string, string->number
-    - String: list->string, string-downcase, string-upcase
+    - String: string-downcase, string-upcase
     - System: exit
 * convert functions to take varargs:
     - Booleans: boolean=?
-    - Char: char=?, char<?, char>?, char<=?, char>=?
     - List: exists, for-all, map, partition
-    - Math: <, >, <=, >=
     - String: string=?, string<?, string>?, string<=?, string>=?
 * move things from haskell to scheme:
-    - Control: case, if
+    - Control: if
 
 * add exceptions
 * add floating point numbers

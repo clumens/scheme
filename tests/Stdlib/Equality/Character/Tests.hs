@@ -22,26 +22,36 @@ testData = [
     ("tests/Stdlib/Equality/Character/eq-01.scm", "#t"),
     ("tests/Stdlib/Equality/Character/eq-02.scm", "#f"),
     ("tests/Stdlib/Equality/Character/eq-03.scm", "EXCEPTION"),
+    ("tests/Stdlib/Equality/Character/eq-04.scm", "#t"),
+    ("tests/Stdlib/Equality/Character/eq-05.scm", "#f"),
 
     ("tests/Stdlib/Equality/Character/lt-01.scm", "#f"),
     ("tests/Stdlib/Equality/Character/lt-02.scm", "#f"),
     ("tests/Stdlib/Equality/Character/lt-03.scm", "#t"),
     ("tests/Stdlib/Equality/Character/lt-04.scm", "EXCEPTION"),
+    ("tests/Stdlib/Equality/Character/lt-05.scm", "#f"),
+    ("tests/Stdlib/Equality/Character/lt-06.scm", "#t"),
 
     ("tests/Stdlib/Equality/Character/lteq-01.scm", "#t"),
     ("tests/Stdlib/Equality/Character/lteq-02.scm", "#f"),
     ("tests/Stdlib/Equality/Character/lteq-03.scm", "#t"),
     ("tests/Stdlib/Equality/Character/lteq-04.scm", "EXCEPTION"),
+    ("tests/Stdlib/Equality/Character/lteq-05.scm", "#t"),
+    ("tests/Stdlib/Equality/Character/lteq-06.scm", "#t"),
 
     ("tests/Stdlib/Equality/Character/gt-01.scm", "#f"),
     ("tests/Stdlib/Equality/Character/gt-02.scm", "#f"),
     ("tests/Stdlib/Equality/Character/gt-03.scm", "#t"),
     ("tests/Stdlib/Equality/Character/gt-04.scm", "EXCEPTION"),
+    ("tests/Stdlib/Equality/Character/gt-05.scm", "#f"),
+    ("tests/Stdlib/Equality/Character/gt-06.scm", "#t"),
 
     ("tests/Stdlib/Equality/Character/gteq-01.scm", "#t"),
     ("tests/Stdlib/Equality/Character/gteq-02.scm", "#f"),
     ("tests/Stdlib/Equality/Character/gteq-03.scm", "#t"),
-    ("tests/Stdlib/Equality/Character/gteq-04.scm", "EXCEPTION")
+    ("tests/Stdlib/Equality/Character/gteq-04.scm", "EXCEPTION"),
+    ("tests/Stdlib/Equality/Character/gteq-05.scm", "#t"),
+    ("tests/Stdlib/Equality/Character/gteq-06.scm", "#t")
  ]
 
 tests :: TestTree

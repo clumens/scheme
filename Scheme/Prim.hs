@@ -41,15 +41,15 @@ primEnv = [ -- Basic math.
             -- NEEDS TESTS
             ("odd?" ,   mkF $ unop      (numBool odd)),
             -- NEEDS TESTS
-            ("<",       mkF $ binop     (numCmp (<))),
+            ("<",       mkF $ numCmp (<)),
             -- NEEDS TESTS
-            ("<=",      mkF $ binop     (numCmp (<=))),
+            ("<=",      mkF $ numCmp (<=)),
             -- NEEDS TESTS
-            (">",       mkF $ binop     (numCmp (>))),
+            (">",       mkF $ numCmp (>)),
             -- NEEDS TESTS
-            ("<=",      mkF $ binop     (numCmp (>=))),
+            (">=",      mkF $ numCmp (>=)),
             -- NEEDS TESTS
-            ("=",       mkF $ binop     (numCmp (==))),
+            ("=",       mkF $ numCmp (==)),
 
             -- Booleans.
             -- NEEDS TESTS
@@ -68,11 +68,11 @@ primEnv = [ -- Basic math.
             ("string?",     mkF $ unop isString),
 
             -- Characters.
-            ("char=?",      mkF $ binop eqCharacter),
-            ("char<?",      mkF $ binop (chEqOp (<))),
-            ("char>?",      mkF $ binop (chEqOp (>))),
-            ("char<=?",     mkF $ binop (chEqOp (<=))),
-            ("char>=?",     mkF $ binop (chEqOp (>=))),
+            ("char=?",      mkF $ charCmp (==)),
+            ("char<?",      mkF $ charCmp (<)),
+            ("char>?",      mkF $ charCmp (>)),
+            ("char<=?",     mkF $ charCmp (<=)),
+            ("char>=?",     mkF $ charCmp (>=)),
 
             -- Strings.
             -- NEEDS TESTS
@@ -151,23 +151,39 @@ strOp _  x          (String _) = throw $ TypeMismatch "String " x
 strOp _  (String _) y          = throw $ TypeMismatch "String " y
 strOp _  x          _          = throw $ TypeMismatch "String " x
 
-chEqOp :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
-chEqOp op (Character x) (Character y) = return $ Bool $ op x y
-chEqOp _  x             (Character _) = throw $ TypeMismatch "Char" x
-chEqOp _  (Character _) y             = throw $ TypeMismatch "Char" y
-chEqOp _  x          _                = throw $ TypeMismatch "Char" x
-
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
 eqOp _  x        (Bool _) = throw $ TypeMismatch "Bool" x
 eqOp _  (Bool _) y        = throw $ TypeMismatch "Bool" y
 eqOp _  x        _        = throw $ TypeMismatch "Bool" x
 
-numCmp :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
-numCmp op (Number x) (Number y) = return . Bool $ op x  y
-numCmp _  x          (Number _) = throw $ TypeMismatch "Number" x
-numCmp _  (Number _) y          = throw $ TypeMismatch "Number" y
-numCmp _  x          _          = throw $ TypeMismatch "Number" x
+numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+numCmp fn args | length args < 2 = throw $ NumArgs 2 args
+               | otherwise       = loop fn args
+ where
+    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Bool
+    cmpOne op (Number x) (Number y) = x `op` y
+    cmpOne _  x          (Number _) = throw $ TypeMismatch "Number" x
+    cmpOne _  (Number _) y          = throw $ TypeMismatch "Number" y
+    cmpOne _  x          _          = throw $ TypeMismatch "Number" x
+
+charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+charCmp fn args | length args < 2 = throw $ NumArgs 2 args
+                | otherwise       = loop fn args
+ where
+    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Bool
+    cmpOne op (Character x) (Character y) = x `op` y
+    cmpOne _  x             (Character _) = throw $ TypeMismatch "Char" x
+    cmpOne _  (Character _) y             = throw $ TypeMismatch "Char" y
+    cmpOne _  x          _                = throw $ TypeMismatch "Char" x
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
@@ -195,7 +211,7 @@ isCharacter (Character _) = return $ Bool True
 isCharacter _             = return $ Bool False
 
 eqCharacter :: LispVal -> LispVal -> Eval LispVal
-eqCharacter x y = chEqOp (==) x y
+eqCharacter x y = charCmp (==) [x, y]
 
 isList :: LispVal -> Eval LispVal
 isList (List _)     = return $ Bool True

@@ -20,15 +20,13 @@ Returns the contents of the second element of `list`, which must be not empty.
 
 Returns `#t` if `obj` is a character, otherwise returns `#f`.
 
-`(char=? ch1 ch2)`
-`(char<? ch1 ch2)`
-`(char>? ch1 ch2)`
-`(char<=? ch1 ch2)`
-`(char>=? ch1 ch2)`
+`(char=? ch1 ... chn)`
+`(char<? ch1 ... chn)`
+`(char>? ch1 ... chn)`
+`(char<=? ch1 ... chn)`
+`(char>=? ch1 ... chn)`
 
 These functions are used to compare two characters, returning `#t` or `#f` as appropriate.
-**NOTE:** These functions differ from standard scheme.  They only take two characters
-instead of a variable number of characters.  This may be fixed.
 
 `(cons obj1 obj2)`
 

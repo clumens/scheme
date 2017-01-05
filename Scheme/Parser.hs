@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Scheme.Parser(readExpr,
@@ -27,12 +26,12 @@ style = Lang.emptyDef { Tok.commentStart    = "#|",
                         Tok.identLetter     = alphaNum  <|> oneOf "_-+/=|&<>?",
                         Tok.opStart         = Tok.opLetter style,
                         Tok.opLetter        = oneOf ":!#$%%&*+./<=>?@\\^|-~",
-                        Tok.reservedNames   = [],
-                        Tok.reservedOpNames = [ ".", "'", "\""],
+                        Tok.reservedNames   = ["Nil", "#t", "#f"],
+                        Tok.reservedOpNames = ["."],
                         Tok.caseSensitive   = True }
 
-Tok.TokenParser { Tok.parens = m_parens,
-                  Tok.identifier = m_identifier } = Tok.makeTokenParser style
+reservedName :: T.Text -> Parser ()
+reservedName name = Tok.reserved lexer $ T.unpack name
 
 reservedOp :: T.Text -> Parser ()
 reservedOp op = Tok.reservedOp lexer $ T.unpack op
@@ -47,16 +46,10 @@ parseChar = do
     return $ Character c
 
 parseAtom :: Parser LispVal
-parseAtom = do
-  p <- m_identifier
-  return $ Atom $ T.pack p
+parseAtom = Atom . T.pack <$> Tok.identifier lexer
 
 parseText :: Parser LispVal
-parseText = do
-  reservedOp "\""
-  p <- many $ noneOf "\""
-  reservedOp "\""
-  return $ String . T.pack $  p
+parseText = String . T.pack <$> Tok.stringLiteral lexer
 
 parseNumber :: Parser LispVal
 parseNumber = Number . read <$> many1 digit
@@ -68,16 +61,18 @@ parseNegNum = do
   return $ Number . negate . read $ d
 
 parseList :: Parser LispVal
-parseList = List . concat <$> Text.Parsec.many parseExpr `sepBy` (char ' ' <|> char '\n')
+parseList = List . concat <$> many parseExpr `sepBy` (char ' ' <|> char '\n')
 
 parseSExp :: Parser LispVal
-parseSExp = List . concat <$> m_parens (Text.Parsec.many parseExpr `sepBy` (char ' ' <|> char '\n'))
+parseSExp = do
+    sexp <- Tok.parens lexer (many parseExpr `sepBy` (char ' ' <|> char '\n'))
+    return $ List $ concat sexp
 
 parseQuote :: Parser LispVal
 parseQuote = do
-  reservedOp "\'"
-  x <- parseExpr
-  return $ List [Atom "quote", x]
+    void $ char '\''
+    x <- parseExpr
+    return $ List [Atom "quote", x]
 
 parseExpr :: Parser LispVal
 parseExpr =  parseReserved
@@ -90,17 +85,15 @@ parseExpr =  parseReserved
          <|> parseSExp
 
 parseReserved :: Parser LispVal
-parseReserved = (reservedOp "Nil" >> return Nil)
-            <|> (reservedOp "#t" >> return (Bool True))
-            <|> (reservedOp "#f" >> return (Bool False))
+parseReserved = (reservedName "Nil" >> return Nil)
+            <|> (reservedName "#t" >> return (Bool True))
+            <|> (reservedName "#f" >> return (Bool False))
             <|> (reservedOp "." >> return (Atom "."))
 
 contents :: Parser a -> Parser a
 contents p = do
-  Tok.whiteSpace lexer
-  r <- p
-  eof
-  return r
+    Tok.whiteSpace lexer
+    p <* eof
 
 readExpr :: T.Text -> Either ParseError LispVal
 readExpr = parse (contents parseExpr) "<stdin>"

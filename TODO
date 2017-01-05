@@ -20,10 +20,7 @@
 * add records (?)
 * add unquote and quasiquote (?)
 * add vararg syntax to lambdas
-* can LanguageDef and TokenParser be used to eliminate parsing code?
 * convert things to use tail recursion
 * do defines work in the body of a lambda or let?
-* do escaped characters work in strings?
 * how do multiple return values work?
-* strings that are just whitespace get reduced to empty
 * test cases for all stdlib functions

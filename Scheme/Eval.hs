@@ -12,12 +12,12 @@ module Scheme.Eval(basicEnv,
                    safeExec)
  where
 
-import Scheme.Exceptions(LispException(..), errorEnvironment, errorConstrFn, errorPredFn)
+import Scheme.Exceptions(errorEnvironment, errorConstrFn, errorPredFn, typeErrorMessage)
 import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
 
-import           Control.Exception(SomeException, fromException, throw, try)
+import           Control.Exception(SomeException, try)
 import           Control.Monad(void)
 import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
@@ -68,8 +68,8 @@ getVar (Atom atom) = do
     env <- get
     case Map.lookup atom env of
         Just x  -> return x
-        Nothing -> throw $ UnboundVar atom
-getVar n = throw $ TypeMismatch  "failure to get variable: " n
+        Nothing -> return $ Error "unbound-error" (T.concat ["Unbound variable: ", atom])
+getVar n = return $ Error "type-error" (typeErrorMessage "Atom" n)
 
 --
 -- Evaluation functions of various types
@@ -81,16 +81,15 @@ getVar n = throw $ TypeMismatch  "failure to get variable: " n
 readFn :: LispVal -> Eval LispVal
 readFn x = eval x >>= \case
     String txt -> textToEvalForm txt
-    val        -> throw $ TypeMismatch "read expects string, instead got: " val
+    val        -> return $ Error "type-error" (typeErrorMessage "String" val)
 
--- Catch any exceptions raised by evaluation and convert them into an Either value.  This can then be
--- printed to the screen in the REPL (or just to the console if being run non-interactively, I guess).
+-- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
+-- called exceptions) and convert them into an Either value.  This can then be printed to the screen
+-- in the REPL (or just o the console if being run non-interactively, I guess).
 safeExec :: IO a -> IO (Either String a)
 safeExec m = try m >>= \case
-    Left (eTop :: SomeException) -> case fromException eTop of
-        Just (enclosed :: LispException) -> return $ Left (show enclosed)
-        Nothing                          -> return $ Left (show eTop)
-    Right val -> return $ Right val
+    Left (exn :: SomeException) -> return $ Left ("*** INTERNAL ERROR: " ++ show exn)
+    Right val                   -> return $ Right val
 
 -- Force the evaluation of some scheme by running the StateT monad.  Return any return value given by the
 -- evaluation as well as the new environment.  This environment can in turn be fed back into the next
@@ -122,7 +121,7 @@ execText env textExpr = do
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
 -- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function.
 textToEvalForm :: T.Text -> Eval LispVal
-textToEvalForm input = either (throw . PError . show) eval $ readExpr input
+textToEvalForm input = either (\err -> return $ Error "parse-error" (T.pack $ show err)) eval $ readExpr input
 
 -- The next two functions are for evaluating a string of input, which could be many scheme expressions, as
 -- would happen when reading a file from disk.  This is useful for reading in a standard library, or some user
@@ -145,7 +144,7 @@ execFile env fileExpr = do
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
 -- this function split out could be handy elsewhere, though that's not happening right now.
 fileToEvalForm :: T.Text -> Eval LispVal
-fileToEvalForm input = either (throw . PError . show) evalBody $ readExprFile input
+fileToEvalForm input = either (\err -> return $ Error "parse-error" (T.pack $ show err)) evalBody $ readExprFile input
 
 --
 -- Misc. helper functions
@@ -163,24 +162,23 @@ applyLambda expr params args =
 -- to ensure that a name is given for a a variable, function, etc.
 ensureAtom :: LispVal -> Eval LispVal
 ensureAtom n@(Atom _) = return  n
-ensureAtom n = throw $ TypeMismatch "expected an atomic value" n
+ensureAtom n          = return $ Error "type-error" (typeErrorMessage "Atom" n)
 
 -- Extract the name out of an Atom.
 extractVar :: LispVal -> T.Text
 extractVar (Atom atom) = atom
-extractVar x           = throw $ TypeMismatch "Atom" x
 
 -- Given a list of (name value) pairs from a let-expression, extract just the names.
 getNames :: [LispVal] -> [LispVal]
 getNames (List [x@(Atom _), _]:xs) = x : getNames xs
 getNames []                        = []
-getNames _                         = throw $ BadSpecialForm "let bindings list malformed"
+getNames _                         = [Error "syntax-error" "let bindings list malformed"]
 
 -- Given a list of (name value) pairs from a let-expression, extract just the values.
 getVals :: [LispVal] -> [LispVal]
 getVals (List [_, x]:xs) = x : getVals xs
 getVals []               = []
-getVals _                = throw $ BadSpecialForm "let bindings list malformed"
+getVals _                = [Error "syntax-error" "let bindings list malformed"]
 
 --
 -- eval - This function is used to evaluate a single scheme expression.  It takes a lot of forms, because
@@ -207,8 +205,8 @@ eval (List (Atom "apply":Atom proc:args)) = do
                          case funVar of
                              Func (IFunc fn) Nothing      -> fn realArgs
                              Func (IFunc fn) (Just bound) -> replaceEnv bound (fn realArgs)
-                             _                            -> throw $ NotFunction funVar
-        x       -> throw $ TypeMismatch "List" x
+                             _                            -> return $ Error "type-error" (T.concat ["Not a function: ", showVal funVar])
+        x       -> return $ Error "type-error" (typeErrorMessage "List" x)
 
 -- Returns an unevaluated value.
 -- Example: (quote 12)
@@ -219,8 +217,8 @@ eval (List [Atom "quote", val]) = return val
 eval (List [Atom "if", predicate, trueExpr, falseExpr]) = eval predicate >>= \case
     Bool True  -> eval trueExpr
     Bool False -> eval falseExpr
-    _          -> throw $ BadSpecialForm "if's first arg must eval into a boolean"
-eval (List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr>)"
+    x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
+eval (List (Atom "if":_))  = return $ Error "syntax-error" "(if <bool> <true-expr> <false-expr>)"
 
 -- The cond expression, made up of a bunch of clauses.  The clauses are not in a list.  Each clause consists
 -- of a test and an expression.  Tests are evaluated until one returns true, in which case the matching
@@ -233,13 +231,13 @@ eval (List (Atom "cond":clauses)) =
     tryOne (List [test, expr]:rest)     = eval test >>= \case
                                               Bool True  -> eval expr
                                               Bool False -> tryOne rest
-                                              x          -> throw $ TypeMismatch "Expected bool in cond test, got: " x
+                                              x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
     -- If there's just a test without an expression, return the evaluation of the test.
     tryOne [List [test]]                = eval test
     -- If we got here, we ran out of cases without seeing an else.  The return value is implementation
     -- defined behavior, so I'm just returning false.
     tryOne []                           = return $ Bool False
-    tryOne (x:_)                        = throw $ TypeMismatch "Atom or Expr" x
+    tryOne (x:_)                        = return $ Error "type-error" (typeErrorMessage "Atom or Expr" x)
 
 -- Evaluate a sequence of expressions.  The main value of this seems to be that it's like let, but doesn't
 -- require any variable definitions.
@@ -270,13 +268,13 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
     case break (== Atom ".") params of
         (p, [])                     -> evalNormalFunc name p
         (p, [Atom ".", Atom rest])  -> evalSpecialFunc name p rest
-        _                           -> throw $ BadSpecialForm "only one parameter may appear after '.'"
+        _                           -> return $ Error "syntax-error" "only one parameter may appear after '.'"
  where
     evalNormalFunc name' params' = do
         -- Done for side effect - make sure all params are atoms.
         mapM_ ensureAtom params'
 
-        if nub params' /= params' then throw $ BadSpecialForm "duplicate names given in formal parameters list"
+        if nub params' /= params' then return $ Error "syntax-error" "duplicate names given in formal parameters list"
         else do
             let fn = Func (IFunc $ applyLambda expr params') Nothing
             modify (Map.insert name' fn)
@@ -290,7 +288,7 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
         -- Make sure parameter names aren't duplicated, and that includes the extra one.
         let allParams = params' ++ [Atom extra]
 
-        if nub allParams /= allParams then throw $ BadSpecialForm "duplicate names given in formal parameters list"
+        if nub allParams /= allParams then return $ Error "syntax-error" "duplicate names given in formal parameters list"
         else do
             let fn = Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
                                             in  applyLambda expr (params' ++ [Atom extra])
@@ -328,7 +326,7 @@ eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, At
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then throw $ BadSpecialForm "duplicate names given in let bindings"
+    if nub atoms /= atoms then return $ Error "syntax-error" "duplicate names given in let bindings"
     else do
         vals  <- mapM eval       $ getVals pairs
         augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
@@ -344,7 +342,7 @@ eval (List [Atom "let", List pairs, expr]) = do
 eval (List [Atom "let", Atom name, List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then throw $ BadSpecialForm "duplicate names given in let bindings"
+    if nub atoms /= atoms then return $ Error "syntax-error" "duplicate names given in let bindings"
     else do
         vals  <- mapM eval       $ getVals pairs
 
@@ -356,17 +354,17 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
 
         augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
             evalBody expr
-eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of parameters and s-expression body\n(let <pairs> <s-expr>)"
+eval (List (Atom "let":_)) = return $ Error "syntax-error" "(let <pair1> ... <pairN> <body>)"
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
 -- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) =
-    if nub params /= params then throw $ BadSpecialForm "duplicate names given in lambda parameters"
+    if nub params /= params then return $ Error "syntax-error" "duplicate names given in lambda parameters"
     else do
         envLocal <- get
         return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
-eval (List (Atom "lambda":_)) = throw $ BadSpecialForm "lambda function expects list of parameters and s-expression body\n(lambda <params> <s-expr>)"
+eval (List (Atom "lambda":_)) = return $ Error "syntax-error" "(lambda (<params>) <body>)"
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If
 -- so, see if it's a primitive, lambda, or normal user-defined function.  Act appropriately.  For a
@@ -378,11 +376,11 @@ eval (List (x:xs)) = do
     case funVar of
         Func (IFunc fn) Nothing         -> fn xVal
         Func (IFunc fn) (Just bound)    -> replaceEnv bound (fn xVal)
-        _                               -> throw $ NotFunction funVar
+        _                               -> return $ Error "type-error" (T.concat ["Not a function: ", showVal funVar])
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
 -- that's an error.
-eval x = throw $ Default  x
+eval x = return $ Error "undefined-error" (T.concat ["Unknown error processing expression: ", showVal x])
 
 --
 -- evalBody - This function is used to evaluate an entire file, or the beginning of the body of a let

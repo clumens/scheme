@@ -1,13 +1,13 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Scheme.Prim(primEnv,
                    unop)
  where
 
-import Scheme.Exceptions(LispException(..), numArgsMessage)
+import Scheme.Exceptions(numArgsMessage, typeErrorMessage)
 import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 
-import           Control.Exception(throw)
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(chr, ord)
@@ -96,10 +96,10 @@ listToString :: LispVal -> LispVal
 listToString (List l) = let
     doit accum []                   = String accum
     doit accum (Character c:rest)   = doit (accum `T.append` T.singleton c) rest
-    doit _ (x:_)                    = throw $ TypeMismatch "Character" x
+    doit _ (x:_)                    = Error "type-error" (typeErrorMessage "Character" x)
  in
     doit "" l
-listToString x        = throw $ TypeMismatch "List" x
+listToString x        = Error "type-error" (typeErrorMessage "List" x)
 
 stringToList :: LispVal -> LispVal
 stringToList (String s) = List $ map Character (T.unpack s)
@@ -127,15 +127,15 @@ binopFold _ _ args@[]         = return $ Error "syntax-error" (numArgsMessage 2 
 
 numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 numOp op (Number x) (Number y) = return $ Number $ op x  y
-numOp _  x          (Number _) = throw $ TypeMismatch "Number" x
-numOp _  (Number _) y          = throw $ TypeMismatch "Number" y
-numOp _  x          _          = throw $ TypeMismatch "Number" x
+numOp _  x          (Number _) = return $ Error "type-error" (typeErrorMessage "Number" x)
+numOp _  (Number _) y          = return $ Error "type-error" (typeErrorMessage "Number" y)
+numOp _  x          _          = return $ Error "type-error" (typeErrorMessage "Number" x)
 
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
-eqOp _  x        (Bool _) = throw $ TypeMismatch "Bool" x
-eqOp _  (Bool _) y        = throw $ TypeMismatch "Bool" y
-eqOp _  x        _        = throw $ TypeMismatch "Bool" x
+eqOp _  x        (Bool _) = return $ Error "type-error" (typeErrorMessage "Bool" x)
+eqOp _  (Bool _) y        = return $ Error "type-error" (typeErrorMessage "Bool" y)
+eqOp _  x        _        = return $ Error "type-error" (typeErrorMessage "Bool" x)
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
@@ -186,44 +186,48 @@ isString _          = return $ Bool False
 --
 
 numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-numCmp fn args | length args < 2 = throw $ NumArgs 2 args
+numCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
                | otherwise       = loop fn args
  where
     loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop op (a:b:rest) = cmpOne op a b >>= \case
+                             Bool True  -> loop op (b:rest)
+                             x          -> return x
     loop _  _          = return $ Bool True
 
-    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Bool
-    cmpOne op (Number x) (Number y) = x `op` y
-    cmpOne _  x          (Number _) = throw $ TypeMismatch "Number" x
-    cmpOne _  (Number _) y          = throw $ TypeMismatch "Number" y
-    cmpOne _  x          _          = throw $ TypeMismatch "Number" x
+    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne op (Number x) (Number y) = return $ Bool $ x `op` y
+    cmpOne _  x          (Number _) = return $ Error "type-error" (typeErrorMessage "Number" x)
+    cmpOne _  (Number _) y          = return $ Error "type-error" (typeErrorMessage "Number" y)
+    cmpOne _  x          _          = return $ Error "type-error" (typeErrorMessage "Number" x)
 
 --
 -- CHARACTERS
 --
 
 charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-charCmp fn args | length args < 2 = throw $ NumArgs 2 args
+charCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
                 | otherwise       = loop fn args
  where
     loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop op (a:b:rest) = cmpOne op a b >>= \case
+                             Bool True  -> loop op (b:rest)
+                             x          -> return x
     loop _  _          = return $ Bool True
 
-    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Bool
-    cmpOne op (Character x) (Character y) = x `op` y
-    cmpOne _  x             (Character _) = throw $ TypeMismatch "Char" x
-    cmpOne _  (Character _) y             = throw $ TypeMismatch "Char" y
-    cmpOne _  x          _                = throw $ TypeMismatch "Char" x
+    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne op (Character x) (Character y) = return $ Bool $ x `op` y
+    cmpOne _  x             (Character _) = return $ Error "type-error" (typeErrorMessage "Char" x)
+    cmpOne _  (Character _) y             = return $ Error "type-error" (typeErrorMessage "Char" y)
+    cmpOne _  x          _                = return $ Error "type-error" (typeErrorMessage "Char" x)
 
 charToInteger :: LispVal -> Eval LispVal
 charToInteger (Character c) = return $ Number $ toInteger $ ord c
-charToInteger x             = throw $ TypeMismatch "Char" x
+charToInteger x             = return $ Error "type-error" (typeErrorMessage "Char" x)
 
 integerToChar :: LispVal -> Eval LispVal
 integerToChar (Number n) = return $ Character $ chr $ fromIntegral n
-integerToChar x          = throw $ TypeMismatch "Number" x
+integerToChar x          = return $ Error "type-error" (typeErrorMessage "Number" x)
 
 --
 -- LISTS
@@ -231,30 +235,32 @@ integerToChar x          = throw $ TypeMismatch "Number" x
 
 append :: LispVal -> LispVal -> Eval LispVal
 append (List x) (List y) = return $ List $ x ++ y
-append _ _               = throw $ Unknown "append got something other than a list"
+append (List _) y        = return $ Error "type-error" (typeErrorMessage "List" y)
+append x        (List _) = return $ Error "type-error" (typeErrorMessage "List" x)
+append x        _        = return $ Error "type-error" (typeErrorMessage "List" x)
 
 cons :: [LispVal] -> Eval LispVal
 cons [x, List yList]    = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
-cons x                  = throw $ Unknown $ T.concat $ "Error in cons: " : map showVal x
+cons x                  = return $ Error "unknown-error" (T.concat $ "Error in cons: " : map showVal x)
 
 car :: [LispVal] -> Eval LispVal
 car [List []]     = return Nil
 car [List (x:_)]  = return x
 car []            = return Nil
-car x             = throw $ Unknown $ T.concat $ "Error in car: " : map showVal x
+car x             = return $ Error "unknown-error" (T.concat $ "Error in car: " : map showVal x)
 
 cdr :: [LispVal] -> Eval LispVal
 cdr [List (_:xs)] = return $ List xs
 cdr [List []]     = return Nil
 cdr []            = return Nil
-cdr x             = throw $ Unknown $ T.concat $ "Error in cdr: " : map showVal x
+cdr x             = return $ Error "unknown-error" (T.concat $ "Error in cdr: " : map showVal x)
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
-quote x           = throw $ Unknown $ T.concat $ "Error in quote: " : map showVal x
+quote x           = return $ Error "unknown-error" (T.concat $ "Error in quote: " : map showVal x)
 
 --
 -- IO
@@ -263,11 +269,11 @@ quote x           = throw $ Unknown $ T.concat $ "Error in quote: " : map showVa
 fileExists :: LispVal  -> Eval LispVal
 fileExists (Atom atom)  = fileExists $ String atom
 fileExists (String txt) = Bool <$> liftIO (doesFileExist $ T.unpack txt)
-fileExists val          = throw $ TypeMismatch "read expects string, instead got: " val
+fileExists val          = return $ Error "type-error" (typeErrorMessage "String" val)
 
 slurp :: LispVal  -> Eval LispVal
 slurp (String txt) = liftIO $ withFile (T.unpack txt) ReadMode (readTextFile txt)
-slurp val          = throw $ TypeMismatch "read expects string, instead got: " val
+slurp val          = return $ Error "type-error" (typeErrorMessage "String" val)
 
 readTextFile :: T.Text -> Handle -> IO LispVal
 readTextFile _ handle =

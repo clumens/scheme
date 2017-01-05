@@ -30,10 +30,13 @@ data LispVal = Atom T.Text
              | Nil
              | Number Integer
              | String T.Text
- deriving (Show, Typeable)
+ deriving (Eq, Show, Typeable)
 
 data IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
  deriving (Typeable)
+
+instance Eq IFunc where
+    (IFunc _) == (IFunc _) = False
 
 instance Show IFunc where
     show (IFunc _) = "(function)"

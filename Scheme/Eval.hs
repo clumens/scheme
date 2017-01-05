@@ -20,6 +20,7 @@ import Scheme.Prim(unop, primEnv)
 import           Control.Exception(SomeException, fromException, throw, try)
 import           Control.Monad(void)
 import           Control.Monad.State(get, modify, put, runStateT)
+import           Data.List(nub)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Data.Map as Map
@@ -260,9 +261,13 @@ eval (List [Atom "define", List [Atom name, Atom ".", formal@(Atom _)], expr]) =
 eval (List [Atom "define", List params, expr]) = do
     varParams <- mapM ensureAtom params
     let name = head varParams
-    let fn = Func (IFunc $ applyLambda expr (tail varParams)) Nothing
-    modify (Map.insert (extractVar name) fn)
-    return name
+    let formals = tail varParams
+
+    if nub formals /= formals then throw $ BadSpecialForm "duplicate names given in formal parameters list"
+    else do
+        let fn = Func (IFunc $ applyLambda expr formals) Nothing
+        modify (Map.insert (extractVar name) fn)
+        return name
 
 -- Locally define a list of variables, add them to the environment, and then execute the body in that
 -- environment.
@@ -270,9 +275,12 @@ eval (List [Atom "define", List params, expr]) = do
 --          (let ((x 1)) (+ 1 x))
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
-    vals  <- mapM eval       $ getVals pairs
-    augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
-        evalBody expr
+
+    if nub atoms /= atoms then throw $ BadSpecialForm "duplicate names given in let bindings"
+    else do
+        vals  <- mapM eval       $ getVals pairs
+        augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
+            evalBody expr
 
 -- Named let allows you do give a name to the body of the let, and then refer to this name within the body.
 -- This lets you define a recursive or looping function.  This function takes as parameters everything
@@ -283,24 +291,29 @@ eval (List [Atom "let", List pairs, expr]) = do
 --                        (loop (dec x))))
 eval (List [Atom "let", Atom name, List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
-    vals  <- mapM eval       $ getVals pairs
 
-    -- Add another binding to the environment - a function with the name given, and whose body is the body
-    -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
-    let atoms'  = [Atom name] ++ atoms
-    let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
-    let vals'   = [fn] ++ vals
+    if nub atoms /= atoms then throw $ BadSpecialForm "duplicate names given in let bindings"
+    else do
+        vals  <- mapM eval       $ getVals pairs
 
-    augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
-        evalBody expr
+        -- Add another binding to the environment - a function with the name given, and whose body is the body
+        -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
+        let atoms'  = [Atom name] ++ atoms
+        let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
+        let vals'   = [fn] ++ vals
+
+        augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
+            evalBody expr
 eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of parameters and s-expression body\n(let <pairs> <s-expr>)"
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
 -- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) = do
-    envLocal <- get
-    return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
+    if nub params /= params then throw $ BadSpecialForm "duplicate names given in lambda parameters"
+    else do
+        envLocal <- get
+        return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
 eval (List (Atom "lambda":_)) = throw $ BadSpecialForm "lambda function expects list of parameters and s-expression body\n(lambda <params> <s-expr>)"
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If

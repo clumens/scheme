@@ -19,16 +19,18 @@ lexer :: Tok.GenTokenParser T.Text () Identity
 lexer = Tok.makeTokenParser style
 
 style :: Tok.GenLanguageDef T.Text () Identity
-style = Lang.emptyDef { Tok.commentStart = "{-",
-                        Tok.commentEnd = "-}",
-                        Tok.commentLine = ";",
-                        Tok.opStart = Tok.opLetter style,
-                        Tok.opLetter = oneOf ":!#$%%&*+./<=>?@\\^|-~",
-                        Tok.identStart = letter <|>  oneOf "-+/*=|&><",
-                        Tok.identLetter = alphaNum <|> oneOf "?+<=>|&-/",
-                        Tok.reservedOpNames = [ ".", "'", "\""] }
+style = Lang.emptyDef { Tok.commentStart    = "#|",
+                        Tok.commentEnd      = "|#",
+                        Tok.commentLine     = ";",
+                        Tok.nestedComments  = True,
+                        Tok.identStart      = letter    <|> oneOf "_-+/*=|&<>",
+                        Tok.identLetter     = alphaNum  <|> oneOf "_-+/=|&<>?",
+                        Tok.opStart         = Tok.opLetter style,
+                        Tok.opLetter        = oneOf ":!#$%%&*+./<=>?@\\^|-~",
+                        Tok.reservedNames   = [],
+                        Tok.reservedOpNames = [ ".", "'", "\""],
+                        Tok.caseSensitive   = True }
 
--- pattern binding using record destructing !
 Tok.TokenParser { Tok.parens = m_parens,
                   Tok.identifier = m_identifier } = Tok.makeTokenParser style
 

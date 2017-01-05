@@ -1,3 +1,11 @@
+`(= i1 ... in)`
+`(< i1 ... in)`
+`(> i1 ... in)`
+`(<= i1 ... in)`
+`(>= i1 ... in)`
+
+These functions are used to compare a list of integers, returning `#t` or `#f` as appropriate.
+
 `(and test1 ... testn)`
 
 Returns `#t` if all test expressions evaluate to `#t`, or if there are no test expressions.
@@ -26,7 +34,7 @@ Returns `#t` if `obj` is a character, otherwise returns `#f`.
 `(char<=? ch1 ... chn)`
 `(char>=? ch1 ... chn)`
 
-These functions are used to compare two characters, returning `#t` or `#f` as appropriate.
+These functions are used to compare a list of characters, returning `#t` or `#f` as appropriate.
 
 `(cons obj1 obj2)`
 

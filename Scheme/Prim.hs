@@ -40,15 +40,10 @@ primEnv = [ -- Basic math.
             ("even?",   mkF $ unop      (numBool even)),
             -- NEEDS TESTS
             ("odd?" ,   mkF $ unop      (numBool odd)),
-            -- NEEDS TESTS
             ("<",       mkF $ numCmp (<)),
-            -- NEEDS TESTS
             ("<=",      mkF $ numCmp (<=)),
-            -- NEEDS TESTS
             (">",       mkF $ numCmp (>)),
-            -- NEEDS TESTS
             (">=",      mkF $ numCmp (>=)),
-            -- NEEDS TESTS
             ("=",       mkF $ numCmp (==)),
 
             -- Booleans.

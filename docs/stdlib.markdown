@@ -6,7 +6,7 @@
 
 These functions are used to compare a list of integers, returning `#t` or `#f` as appropriate.
 
-`(and test1 ... testn)`
+`(and test1 ... testN)`
 
 Returns `#t` if all test expressions evaluate to `#t`, or if there are no test expressions.
 Otherwise, returns `#f`.  **NOTE:** This function differs from standard scheme.  It does not
@@ -17,7 +17,7 @@ return the value of the last test.
 Call the procedure `proc` with the given arguments.  `rest-args` is the only argument that
 must be present, and it must be a list.
 
-`(begin expr1 ... exprn)`
+`(begin expr1 ... exprN)`
 
 Evaluate all expressions, returning the value of the last one.  This is mainly used to include
 side effects before returning some value.
@@ -38,15 +38,15 @@ Returns the contents of the second element of `list`, which must be not empty.
 
 Returns `#t` if `obj` is a character, otherwise returns `#f`.
 
-`(char=? ch1 ... chn)`
-`(char<? ch1 ... chn)`
-`(char>? ch1 ... chn)`
-`(char<=? ch1 ... chn)`
-`(char>=? ch1 ... chn)`
+`(char=? ch1 ... chN)`
+`(char<? ch1 ... chN)`
+`(char>? ch1 ... chN)`
+`(char<=? ch1 ... chN)`
+`(char>=? ch1 ... chN)`
 
 These functions are used to compare a list of characters, returning `#t` or `#f` as appropriate.
 
-`(cond (test1 expr1) ... (testn exprn) [(else expr)])`
+`(cond (test1 expr1) ... (testN exprN) [(else expr)])`
 
 Evaluate `test` expressions until one returns `#t`.  When that happens, return the matching `expr`.
 If no `test` passes, return the else `expr` if it exists.  If there is no else expression, return
@@ -101,20 +101,20 @@ Evaluate the `pred` expression.  If it evaluates to `#t`, return the evaluation 
 
 Returns the number of elements in `list`.
 
-`(let ((var1 init1) ... (varn initn)) body)`
+`(let ((var1 init1) ... (varN initN)) body)`
 
 Evaluate each `init` expression and bind it to each `var`.  Each variable name may only
 be used once in a given let expression.  The `inits` are not evaluated in any guaranteed
 order, and bindings may not refer to other bindings in the same let expression.  Returns
 the evaluation of `body`.
 
-`(let name ((var1 init1) ... (varn initn)) body)`
+`(let name ((var1 init1) ... (varN initN)) body)`
 
 Named let is like let, except that `name` is bound in `body` to a function.  This function
 takes as parameters all the `vars`, which are initialized with the `inits`, and whose body
 is `body`.  This allows for defining a recursive function.
 
-`(list obj1 ... objn)`
+`(list obj1 ... objN)`
 
 Returns a new list containing all its arguments.
 
@@ -138,7 +138,7 @@ Returns `#t` if `obj` is the empty list, otherwise returns `#f`.
 
 Returns `#t` if `obj` is a number, otherwise returns `#f`.
 
-`(or test1 ... testn)`
+`(or test1 ... testN)`
 
 Returns `#t` if any test expression evaluates to `#t`.  Otherwise, returns `#f` (including if
 there are no test expressions).  **NOTE:** This function differs from standard scheme.  It

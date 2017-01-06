@@ -1,5 +1,5 @@
 * add functions to the standard library:
-    - Char: char->integer, char-alphabetic?, char-downcase, char-numeric?, char-upcase, char-whitespace?, integer->char
+    - Char: char-alphabetic?, char-downcase, char-numeric?, char-upcase, char-whitespace?
     - Control: case
     - IO: ???
     - Math: div, max, min, mod, number->string, string->number

@@ -22,6 +22,18 @@
                    ((car lst)       #t)
                    (else            (loop (cdr lst))))))
 
+; Characters.
+(define (char=? . chars)
+        (apply = (map char->integer chars)))
+(define (char<? . chars)
+        (apply < (map char->integer chars)))
+(define (char>? . chars)
+        (apply > (map char->integer chars)))
+(define (char<=? . chars)
+        (apply <= (map char->integer chars)))
+(define (char>=? . chars)
+        (apply >= (map char->integer chars)))
+
 ; Control.
 (define (unless test expr) (if test #f expr))
 (define (when test expr) (if test expr #f))

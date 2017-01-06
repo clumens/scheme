@@ -10,6 +10,7 @@ import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 import           Control.Exception(throw)
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
+import           Data.Char(chr, ord)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
@@ -62,11 +63,10 @@ primEnv = [ -- Basic math.
             ("string?",     mkF $ unop isString),
 
             -- Characters.
-            ("char=?",      mkF $ charCmp (==)),
-            ("char<?",      mkF $ charCmp (<)),
-            ("char>?",      mkF $ charCmp (>)),
-            ("char<=?",     mkF $ charCmp (<=)),
-            ("char>=?",     mkF $ charCmp (>=)),
+            -- NEEDS TESTS
+            ("char->integer", mkF $ unop charToInteger),
+            -- NEEDS TESTS
+            ("integer->char", mkF $ unop integerToChar),
 
             -- Strings.
             -- NEEDS TESTS
@@ -157,20 +157,6 @@ numCmp fn args | length args < 2 = throw $ NumArgs 2 args
     cmpOne _  (Number _) y          = throw $ TypeMismatch "Number" y
     cmpOne _  x          _          = throw $ TypeMismatch "Number" x
 
-charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-charCmp fn args | length args < 2 = throw $ NumArgs 2 args
-                | otherwise       = loop fn args
- where
-    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
-    loop _  _          = return $ Bool True
-
-    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Bool
-    cmpOne op (Character x) (Character y) = x `op` y
-    cmpOne _  x             (Character _) = throw $ TypeMismatch "Char" x
-    cmpOne _  (Character _) y             = throw $ TypeMismatch "Char" y
-    cmpOne _  x          _                = throw $ TypeMismatch "Char" x
-
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
 equivalent x@(Bool _)      y@(Bool _)       = eqBoolean x y
@@ -214,6 +200,32 @@ isProcedure _           = return $ Bool False
 isString :: LispVal -> Eval LispVal
 isString (String _) = return $ Bool True
 isString _          = return $ Bool False
+
+--
+-- CHARACTERS
+--
+
+charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+charCmp fn args | length args < 2 = throw $ NumArgs 2 args
+                | otherwise       = loop fn args
+ where
+    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Bool
+    cmpOne op (Character x) (Character y) = x `op` y
+    cmpOne _  x             (Character _) = throw $ TypeMismatch "Char" x
+    cmpOne _  (Character _) y             = throw $ TypeMismatch "Char" y
+    cmpOne _  x          _                = throw $ TypeMismatch "Char" x
+
+charToInteger :: LispVal -> Eval LispVal
+charToInteger (Character c) = return $ Number $ toInteger $ ord c
+charToInteger x             = throw $ TypeMismatch "Char" x
+
+integerToChar :: LispVal -> Eval LispVal
+integerToChar (Number n) = return $ Character $ chr $ fromIntegral n
+integerToChar x          = throw $ TypeMismatch "Number" x
 
 --
 -- LISTS

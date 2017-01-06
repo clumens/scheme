@@ -12,6 +12,16 @@ Returns `#t` if all test expressions evaluate to `#t`, or if there are no test e
 Otherwise, returns `#f`.  **NOTE:** This function differs from standard scheme.  It does not
 return the value of the last test.
 
+`(apply proc arg1 ... rest-args)`
+
+Call the procedure `proc` with the given arguments.  `rest-args` is the only argument that
+must be present, and it must be a list.
+
+`(begin expr1 ... exprn)`
+
+Evaluate all expressions, returning the value of the last one.  This is mainly used to include
+side effects before returning some value.
+
 `(boolean? obj)`
 
 Returns `#t` if `obj` is a boolean, otherwise returns `#f`.
@@ -36,10 +46,37 @@ Returns `#t` if `obj` is a character, otherwise returns `#f`.
 
 These functions are used to compare a list of characters, returning `#t` or `#f` as appropriate.
 
+`(cond (test1 expr1) ... (testn exprn) [(else expr)])`
+
+Evaluate `test` expressions until one returns `#t`.  When that happens, return the matching `expr`.
+If no `test` passes, return the else `expr` if it exists.  If there is no else expression, return
+`#f`.
+
 `(cons obj1 obj2)`
 
 Returns new list where the first element is `obj1` and the second element is `obj2`, which
 must be a list.
+
+`(define var expr)`
+
+Assign the value of `expr` to the variable named `var`.
+
+`(define (var formals) body)`
+
+Create a new function named `var` with one or more formal parameters, with the body `body`.
+Names may not be reused in a single definition.
+
+`(define (var . formal) body)`
+
+Create a new function named `var` with a single formal parameter, with the body `body`.  All
+arguments are converted into a list and passed as the single parameter.  Names may not be
+reused in a single definition.
+
+`(define (var formals . formal) body)`
+
+Create a new function named `var` with one or more named formal parameters, an extra single
+formal parameter, and the body `body`.  All extra arguments are converted into a list and
+passed as the last parameter.  names may not be reused in a single definition.
 
 `(exists func list)`
 
@@ -55,9 +92,27 @@ elements match, return `#t`.  Otherwise return `#f`.  **NOTE:** This function di
 standard scheme.  It only supports one list.  This may be fixed.  It also does not support
 returning the matching value.  This may not be fixed.
 
+`(if pred true-expr false-expr)`
+
+Evaluate the `pred` expression.  If it evaluates to `#t`, return the evaluation of the
+`true-expr`.  Otherwise, return the evaluation of the `false-expr`.
+
 `(length list)`
 
 Returns the number of elements in `list`.
+
+`(let ((var1 init1) ... (varn initn)) body)`
+
+Evaluate each `init` expression and bind it to each `var`.  Each variable name may only
+be used once in a given let expression.  The `inits` are not evaluated in any guaranteed
+order, and bindings may not refer to other bindings in the same let expression.  Returns
+the evaluation of `body`.
+
+`(let name ((var1 init1) ... (varn initn)) body)`
+
+Named let is like let, except that `name` is bound in `body` to a function.  This function
+takes as parameters all the `vars`, which are initialized with the `inits`, and whose body
+is `body`.  This allows for defining a recursive function.
 
 `(list obj1 ... objn)`
 
@@ -97,6 +152,10 @@ Returns `#t` when `obj` is greater than zero, otherwise returns `#f`.
 
 Returns `#t` if `obj` is a procedure - a built-in procedure, something defined in the standard
 library, a user-defined procedure, or a lambda - and otherwise returns `#f`.
+
+`(quote obj)`
+
+Returns `obj` without evaluating it.
 
 `(reverse list)`
 

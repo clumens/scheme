@@ -25,6 +25,8 @@ testData = [
     ("tests/Stdlib/Equality/String/eq-04.scm", "#f"),
     ("tests/Stdlib/Equality/String/eq-05.scm", "#f"),
     ("tests/Stdlib/Equality/String/eq-06.scm", "#f"),
+    ("tests/Stdlib/Equality/String/eq-07.scm", "#t"),
+    ("tests/Stdlib/Equality/String/eq-08.scm", "#f"),
 
     ("tests/Stdlib/Equality/String/lt-01.scm", "#f"),
     ("tests/Stdlib/Equality/String/lt-02.scm", "#f"),

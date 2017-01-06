@@ -9,7 +9,7 @@
 * convert functions to take varargs:
     - Booleans: boolean=?
     - List: exists, for-all, map, partition
-    - String: string=?, string<?, string>?, string<=?, string>=?
+    - String: string<?, string>?, string<=?, string>=?
 * move things from haskell to scheme:
     - Control: if
 

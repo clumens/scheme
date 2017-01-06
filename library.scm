@@ -57,6 +57,22 @@
 ; NEEDS TESTS
 (define (list . objs) objs)
 ; NEEDS TESTS
+(define (list-ref lst k)
+              ; FIXME: This is an error condition.
+        (cond ((negative? k)    #f)
+              ; FIXME: So is this.
+              ((null? lst)      #f)
+              ((zero? k)        (car lst))
+              (else             (list-ref (cdr lst) (dec k)))))
+; NEEDS TESTS
+(define (list-tail lst k)
+              ; FIXME: This is an error condition.
+        (cond ((negative? k)    #f)
+              ; FIXME: So is this.
+              ((null? lst)      #f)
+              ((zero? k)        lst)
+              (else             (list-tail (cdr lst) (dec k)))))
+; NEEDS TESTS
 (define (map fn lst)
         (if (null? lst)
             '()

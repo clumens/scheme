@@ -2,7 +2,6 @@
     - Char: char->integer, char-alphabetic?, char-downcase, char-numeric?, char-upcase, char-whitespace?, integer->char
     - Control: case
     - IO: ???
-    - List: list-ref, list-tail
     - Math: div, max, min, mod, number->string, string->number
     - String: string-downcase, string-upcase
     - System: exit

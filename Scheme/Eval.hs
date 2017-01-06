@@ -227,8 +227,6 @@ eval (List (Atom "if":_))  = throw $ BadSpecialForm "(if <bool> <s-expr> <s-expr
 eval (List (Atom "cond":clauses)) =
     tryOne clauses
  where
-    -- Handle the else case - return whatever expression is matched up with it.
-    tryOne [List [Atom "else", expr]]   = eval expr
     -- Handle a single condition - evaluate the test and if it's true, return the evaluation of the
     -- expression.  If it's false, try the next condition.  If it's not boolean, raise an error.
     tryOne (List [test, expr]:rest)     = eval test >>= \case

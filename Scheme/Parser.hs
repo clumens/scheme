@@ -26,7 +26,7 @@ style = Lang.emptyDef { Tok.commentStart    = "#|",
                         Tok.identLetter     = alphaNum  <|> oneOf "_-+/=|&<>?",
                         Tok.opStart         = Tok.opLetter style,
                         Tok.opLetter        = oneOf ":!#$%%&*+./<=>?@\\^|-~",
-                        Tok.reservedNames   = ["Nil", "#t", "#f"],
+                        Tok.reservedNames   = ["Nil", "#t", "#f", "else"],
                         Tok.reservedOpNames = ["."],
                         Tok.caseSensitive   = True }
 
@@ -88,6 +88,7 @@ parseReserved :: Parser LispVal
 parseReserved = (reservedName "Nil" >> return Nil)
             <|> (reservedName "#t" >> return (Bool True))
             <|> (reservedName "#f" >> return (Bool False))
+            <|> (reservedName "else" >> return (Bool True))
             <|> (reservedOp "." >> return (Atom "."))
 
 contents :: Parser a -> Parser a

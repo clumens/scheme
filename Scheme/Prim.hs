@@ -176,7 +176,7 @@ isBoolean (Bool _)  = return $ Bool True
 isBoolean _         = return $ Bool False
 
 eqBoolean :: LispVal -> LispVal -> Eval LispVal
-eqBoolean x y = eqOp (==) x y
+eqBoolean = eqOp (==)
 
 isCharacter :: LispVal -> Eval LispVal
 isCharacter (Character _) = return $ Bool True
@@ -239,23 +239,24 @@ cons :: [LispVal] -> Eval LispVal
 cons [x, List yList]    = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
-cons x                  = throw $ Unknown $ T.concat $ ["Error in cons: "] ++ map showVal x
+cons x                  = throw $ Unknown $ T.concat $ "Error in cons: " : map showVal x
 
 car :: [LispVal] -> Eval LispVal
 car [List []]     = return Nil
 car [List (x:_)]  = return x
 car []            = return Nil
-car x             = throw $ Unknown $ T.concat $ ["Error in car: "] ++ map showVal x
+car x             = throw $ Unknown $ T.concat $ "Error in car: " : map showVal x
 
 cdr :: [LispVal] -> Eval LispVal
 cdr [List (_:xs)] = return $ List xs
 cdr [List []]     = return Nil
 cdr []            = return Nil
-cdr x             = throw $ Unknown $ T.concat $ ["Error in cdr: "] ++ map showVal x
+cdr x             = throw $ Unknown $ T.concat $ "Error in cdr: " : map showVal x
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
+quote x           = throw $ Unknown $ T.concat $ "Error in quote: " : map showVal x
 
 --
 -- IO
@@ -272,4 +273,4 @@ slurp val          = throw $ TypeMismatch "read expects string, instead got: " v
 
 readTextFile :: T.Text -> Handle -> IO LispVal
 readTextFile _ handle =
-    TIO.hGetContents handle >>= return . String
+    fmap String (TIO.hGetContents handle)

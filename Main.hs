@@ -16,7 +16,7 @@ main = do
     contents <- TIO.readFile "library.scm"
     env <- execFile basicEnv contents
 
-    if (length args > 0)
+    if not (null args)
     then mapM_ (\arg -> whenM (doesFileExist arg) $ do
                             s <- TIO.readFile arg
                             void $ safeExec $ execText env s)

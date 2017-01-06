@@ -19,7 +19,7 @@ import Scheme.Prim(unop, primEnv)
 
 import           Control.Exception(SomeException, fromException, throw, try)
 import           Control.Monad(void)
-import           Control.Monad.State(get, modify, put, runStateT)
+import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -42,6 +42,7 @@ basicEnv = Map.fromList $ primEnv
 -- Temporarily augment the environment with a set of new bindings (which take precedence over
 -- whatever was in the environment before), and execute fn in that environment.  Then restore
 -- the environment.
+augmentEnv :: MonadState EnvCtx m => [(T.Text, LispVal)] -> m b -> m b
 augmentEnv newBindings fn = do
     oldEnv <- get
     modify (Map.union (Map.fromList newBindings))
@@ -52,6 +53,7 @@ augmentEnv newBindings fn = do
 -- Temporarily replace the environment with a new one, and execute fn in that environment.  Then
 -- restore the old environment.  This is useful for lambdas, which have their execution environment
 -- packed up at definition time.
+replaceEnv :: MonadState s m => s -> m b -> m b
 replaceEnv newEnv fn = do
     oldEnv <- get
     put newEnv
@@ -165,6 +167,7 @@ ensureAtom n = throw $ TypeMismatch "expected an atomic value" n
 -- Extract the name out of an Atom.
 extractVar :: LispVal -> T.Text
 extractVar (Atom atom) = atom
+extractVar x           = throw $ TypeMismatch "Atom" x
 
 -- Given a list of (name value) pairs from a let-expression, extract just the names.
 getNames :: [LispVal] -> [LispVal]
@@ -237,6 +240,7 @@ eval (List (Atom "cond":clauses)) =
     -- If we got here, we ran out of cases without seeing an else.  The return value is implementation
     -- defined behavior, so I'm just returning false.
     tryOne []                           = return $ Bool False
+    tryOne (x:_)                        = throw $ TypeMismatch "Atom or Expr" x
 
 -- Evaluate a sequence of expressions.  The main value of this seems to be that it's like let, but doesn't
 -- require any variable definitions.
@@ -263,7 +267,7 @@ eval (List [Atom "define", varAtom@(Atom _), expr]) = do
 -- Example: (define (inc x) (+ 1 x))
 --          (define (list . objs) objs)
 --          (define (map fn . lsts) ...)
-eval (List [Atom "define", List (Atom name:params), expr]) = do
+eval (List [Atom "define", List (Atom name:params), expr]) =
     case break (== Atom ".") params of
         (p, [])                     -> evalNormalFunc name p
         (p, [Atom ".", Atom rest])  -> evalSpecialFunc name p rest
@@ -325,9 +329,9 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
 
         -- Add another binding to the environment - a function with the name given, and whose body is the body
         -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
-        let atoms'  = [Atom name] ++ atoms
+        let atoms'  = Atom name : atoms
         let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
-        let vals'   = [fn] ++ vals
+        let vals'   = fn : vals
 
         augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
             evalBody expr
@@ -336,7 +340,7 @@ eval (List (Atom "let":_)) = throw $ BadSpecialForm "let expects list of paramet
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
 -- Example: (lambda (x) (* 10 x))
-eval (List [Atom "lambda", List params, expr]) = do
+eval (List [Atom "lambda", List params, expr]) =
     if nub params /= params then throw $ BadSpecialForm "duplicate names given in lambda parameters"
     else do
         envLocal <- get

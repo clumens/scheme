@@ -14,10 +14,9 @@ import Scheme.Eval(basicEnv, evalText, execFile)
 import Scheme.LispVal(showVal)
 
 mkTests :: [(FilePath, T.Text)] -> [TestTree]
-mkTests testData = map (\(fn, expected) -> testCase (takeFileName fn) $ do
-                           actual <- run fn
-                           assertEqual "" (T.strip expected) (T.strip actual))
-                   testData
+mkTests = map (\(fn, expected) -> testCase (takeFileName fn) $ do
+                  actual <- run fn
+                  assertEqual "" (T.strip expected) (T.strip actual))
 
 run :: FilePath -> IO T.Text
 run fn = do

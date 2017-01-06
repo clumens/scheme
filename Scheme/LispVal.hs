@@ -32,7 +32,7 @@ data LispVal = Atom T.Text
              | String T.Text
  deriving (Eq, Show, Typeable)
 
-data IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
+newtype IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
  deriving (Typeable)
 
 instance Eq IFunc where

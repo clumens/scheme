@@ -26,7 +26,7 @@ style = Lang.emptyDef { Tok.commentStart    = "#|",
                         Tok.identLetter     = alphaNum  <|> oneOf "_-+/=|&<>?",
                         Tok.opStart         = Tok.opLetter style,
                         Tok.opLetter        = oneOf ":!#$%%&*+./<=>?@\\^|-~",
-                        Tok.reservedNames   = ["Nil", "#t", "#f", "else"],
+                        Tok.reservedNames   = ["Nil", "#t", "#f", "else", "-", "+"],
                         Tok.reservedOpNames = ["."],
                         Tok.caseSensitive   = True }
 
@@ -52,13 +52,7 @@ parseText :: Parser LispVal
 parseText = String . T.pack <$> Tok.stringLiteral lexer
 
 parseNumber :: Parser LispVal
-parseNumber = Number . read <$> many1 digit
-
-parseNegNum :: Parser LispVal
-parseNegNum = do
-  void $ char '-'
-  d <- many1 digit
-  return $ Number . negate . read $ d
+parseNumber = Number <$> Tok.integer lexer
 
 parseList :: Parser LispVal
 parseList = List . concat <$> many parseExpr `sepBy` (char ' ' <|> char '\n')
@@ -76,8 +70,7 @@ parseQuote = do
 
 parseExpr :: Parser LispVal
 parseExpr =  parseReserved
-         <|> parseNumber
-         <|> try parseNegNum
+         <|> try parseNumber
          <|> parseChar
          <|> parseAtom
          <|> parseText
@@ -89,6 +82,8 @@ parseReserved = (reservedName "Nil" >> return Nil)
             <|> (reservedName "#t" >> return (Bool True))
             <|> (reservedName "#f" >> return (Bool False))
             <|> (reservedName "else" >> return (Bool True))
+            <|> (reservedName "-" >> return (Atom "-"))
+            <|> (reservedName "+" >> return (Atom "+"))
             <|> (reservedOp "." >> return (Atom "."))
 
 contents :: Parser a -> Parser a

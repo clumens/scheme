@@ -10,7 +10,6 @@ import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 import           Control.Exception(throw)
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
-import           Data.Monoid((<>))
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
@@ -73,8 +72,6 @@ primEnv = [ -- Basic math.
             -- NEEDS TESTS
             ("list->string",    mkF $ unop $ return . listToString),
             ("string->list",    mkF $ unop $ return . stringToList),
-            -- NEEDS TESTS
-            ("string-append",   mkF $ binopFold (strOp (<>)) (String "")),
 
             -- Lists.
             -- NEEDS TESTS
@@ -139,12 +136,6 @@ numOp op (Number x) (Number y) = return $ Number $ op x  y
 numOp _  x          (Number _) = throw $ TypeMismatch "Number" x
 numOp _  (Number _) y          = throw $ TypeMismatch "Number" y
 numOp _  x          _          = throw $ TypeMismatch "Number" x
-
-strOp :: (T.Text -> T.Text -> T.Text) -> LispVal -> LispVal -> Eval LispVal
-strOp op (String x) (String y) = return $ String $ op x y
-strOp _  x          (String _) = throw $ TypeMismatch "String " x
-strOp _  (String _) y          = throw $ TypeMismatch "String " y
-strOp _  x          _          = throw $ TypeMismatch "String " x
 
 eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
 eqOp op (Bool x) (Bool y) = return $ Bool $ op x y

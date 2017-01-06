@@ -21,7 +21,6 @@
 * more vararg syntax support:
     (lambda lst ...)
     (lambda (fn . lst) ...)
-* add vararg syntax to lambdas
 * convert things to use tail recursion
 * do defines work in the body of a lambda or let?
 * how do multiple return values work?

@@ -154,6 +154,9 @@
                    ((null? lst2)                            #t)
                    ((not (char>=? (car lst1) (car lst2)))   #f)
                    (else                                    (loop (cdr lst1) (cdr lst2))))))
+; NEEDS TESTS
+(define (string-append . strs)
+        (list->string (apply append (map string->list strs))))
 (define (string-length s) (length (string->list s)))
 
 ; Functions.

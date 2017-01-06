@@ -186,13 +186,13 @@ getVals _                = throw $ BadSpecialForm "let bindings list malformed"
 
 -- Primitive values - obvious.
 eval :: LispVal -> Eval LispVal
-eval (Number i) = return $ Number i
-eval (String s) = return $ String s
-eval (Character c) = return $ Character c
-eval (Bool b)   = return $ Bool b
-eval (List [])  = return Nil
-eval Nil        = return Nil
-eval n@(Atom _) = getVar n
+eval n@(Atom _)     = getVar n
+eval (Bool b)       = return $ Bool b
+eval (Character c)  = return $ Character c
+eval (List [])      = return Nil
+eval Nil            = return Nil
+eval (Number i)     = return $ Number i
+eval (String s)     = return $ String s
 
 -- Returns an unevaluated value.
 -- Example: (quote 12)

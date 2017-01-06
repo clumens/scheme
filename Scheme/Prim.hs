@@ -36,15 +36,15 @@ primEnv = [ -- Basic math.
             ("-",       mkF $ binop     (numOp (-))),
             -- NEEDS TESTS
             ("*",       mkF $ binopFold (numOp (*)) (Number 1)),
+            ("<",       mkF $ numCmp    (<)),
+            ("<=",      mkF $ numCmp    (<=)),
+            (">",       mkF $ numCmp    (>)),
+            (">=",      mkF $ numCmp    (>=)),
+            ("=",       mkF $ numCmp    (==)),
             -- NEEDS TESTS
-            ("even?",   mkF $ unop      (numBool even)),
+            ("div",     mkF $ binop     (numOp div)),
             -- NEEDS TESTS
-            ("odd?" ,   mkF $ unop      (numBool odd)),
-            ("<",       mkF $ numCmp (<)),
-            ("<=",      mkF $ numCmp (<=)),
-            (">",       mkF $ numCmp (>)),
-            (">=",      mkF $ numCmp (>=)),
-            ("=",       mkF $ numCmp (==)),
+            ("mod",     mkF $ binop     (numOp mod)),
 
             -- Booleans.
             -- NEEDS TESTS
@@ -127,10 +127,6 @@ binopFold op _ [a, b]         = op a b
 binopFold op farg args@(_:_)  = foldM op farg args
 binopFold _ _ args@[]         = throw $ NumArgs 2 args
 
-numBool :: (Integer -> Bool) -> LispVal -> Eval LispVal
-numBool op (Number x) = return $ Bool $ op x
-numBool _ x           = throw $ TypeMismatch "Number" x
-
 numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 numOp op (Number x) (Number y) = return $ Number $ op x  y
 numOp _  x          (Number _) = throw $ TypeMismatch "Number" x
@@ -142,20 +138,6 @@ eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
 eqOp _  x        (Bool _) = throw $ TypeMismatch "Bool" x
 eqOp _  (Bool _) y        = throw $ TypeMismatch "Bool" y
 eqOp _  x        _        = throw $ TypeMismatch "Bool" x
-
-numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-numCmp fn args | length args < 2 = throw $ NumArgs 2 args
-               | otherwise       = loop fn args
- where
-    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
-    loop _  _          = return $ Bool True
-
-    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Bool
-    cmpOne op (Number x) (Number y) = x `op` y
-    cmpOne _  x          (Number _) = throw $ TypeMismatch "Number" x
-    cmpOne _  (Number _) y          = throw $ TypeMismatch "Number" y
-    cmpOne _  x          _          = throw $ TypeMismatch "Number" x
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
@@ -200,6 +182,24 @@ isProcedure _           = return $ Bool False
 isString :: LispVal -> Eval LispVal
 isString (String _) = return $ Bool True
 isString _          = return $ Bool False
+
+--
+-- NUMBERS
+--
+
+numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+numCmp fn args | length args < 2 = throw $ NumArgs 2 args
+               | otherwise       = loop fn args
+ where
+    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = if cmpOne op a b then loop op (b:rest) else return $ Bool False
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Bool
+    cmpOne op (Number x) (Number y) = x `op` y
+    cmpOne _  x          (Number _) = throw $ TypeMismatch "Number" x
+    cmpOne _  (Number _) y          = throw $ TypeMismatch "Number" y
+    cmpOne _  x          _          = throw $ TypeMismatch "Number" x
 
 --
 -- CHARACTERS

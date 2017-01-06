@@ -4,8 +4,12 @@
 ; NEEDS TESTS
 (define (dec x) (- x 1))
 ; NEEDS TESTS
+(define (even? x) (zero? (mod x 2)))
+; NEEDS TESTS
 (define (inc x) (+ x 1))
 (define (negative? x) (< x 0))
+; NEEDS TESTS
+(define (odd? x) (not (even? x)))
 (define (positive? x) (> x 0))
 (define (zero? x) (= x 0))
 

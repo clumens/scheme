@@ -194,6 +194,18 @@ eval Nil            = return Nil
 eval (Number i)     = return $ Number i
 eval (String s)     = return $ String s
 
+eval (List (Atom "apply":Atom proc:args)) = do
+    funVar <- eval (Atom proc)
+    xVal   <- mapM eval args
+
+    case last xVal of
+        List extra -> do let realArgs = init xVal ++ extra
+                         case funVar of
+                             Func (IFunc fn) Nothing      -> fn realArgs
+                             Func (IFunc fn) (Just bound) -> replaceEnv bound (fn realArgs)
+                             _                            -> throw $ NotFunction funVar
+        x       -> throw $ TypeMismatch "List" x
+
 -- Returns an unevaluated value.
 -- Example: (quote 12)
 eval (List [Atom "quote", val]) = return val
@@ -339,9 +351,9 @@ eval (List (x:xs)) = do
     funVar <- eval x
     xVal   <- mapM eval xs
     case funVar of
-        Func (IFunc internalFn) Nothing         -> internalFn xVal
-        Func (IFunc internalFn) (Just bound)    -> replaceEnv bound (internalFn xVal)
-        _                                       -> throw $ NotFunction funVar
+        Func (IFunc fn) Nothing         -> fn xVal
+        Func (IFunc fn) (Just bound)    -> replaceEnv bound (fn xVal)
+        _                               -> throw $ NotFunction funVar
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
 -- that's an error.

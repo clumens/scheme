@@ -1,8 +1,9 @@
 * add functions to the standard library:
     - Char: char-alphabetic?, char-downcase, char-numeric?, char-upcase, char-whitespace?
     - Control: case
+    - Floats: /, ceiling, floor, round, truncate
     - IO: ???
-    - Math: max, min, number->string, string->number
+    - Math: expt, max, min, number->string, string->number
     - String: string-downcase, string-upcase
     - System: exit
 * convert functions to take varargs:
@@ -28,5 +29,6 @@
     (lambda (fn . lst) ...)
 * convert things to use tail recursion
 * do defines work in the body of a lambda or let?
+* fix numeric operations in the primitive environment
 * how do multiple return values work?
 * test cases for all stdlib functions

@@ -36,13 +36,18 @@ primEnv = [ -- Basic math.
             ("-",       mkF $ binop     (numOp (-))),
             -- NEEDS TESTS
             ("*",       mkF $ binopFold (numOp (*)) (Number 1)),
+            -- NEEDS TESTS (floats)
             ("<",       mkF $ numCmp    (<)),
+            -- NEEDS TESTS (floats)
             ("<=",      mkF $ numCmp    (<=)),
+            -- NEEDS TESTS (floats)
             (">",       mkF $ numCmp    (>)),
+            -- NEEDS TESTS (floats)
             (">=",      mkF $ numCmp    (>=)),
+            -- NEEDS TESTS (floats)
             ("=",       mkF $ numCmp    (==)),
-            ("div",     mkF $ binop     (numOp div)),
-            ("mod",     mkF $ binop     (numOp mod)),
+            ("div",     mkF $ binop     (intOp div)),
+            ("mod",     mkF $ binop     (intOp mod)),
 
             -- Booleans.
             -- NEEDS TESTS
@@ -57,8 +62,12 @@ primEnv = [ -- Basic math.
             ("char?",       mkF $ unop isCharacter),
             -- NEEDS TESTS
             ("condition?",  mkF $ unop isCondition),
+            ("integer?",    mkF $ unop isInteger),
             ("list?",       mkF $ unop isList),
+            -- NEEDS TESTS
             ("number?",     mkF $ unop isNumber),
+            -- NEEDS TESTS
+            ("real?",       mkF $ unop isReal),
             ("procedure?",  mkF $ unop isProcedure),
             ("string?",     mkF $ unop isString),
 
@@ -121,35 +130,61 @@ binopFold _ _ args@[]         = return $ Raised "syntax-error" (numArgsMessage 2
 -- NUMBERS
 --
 
-numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+intOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
+intOp _  err@(Raised _ _) _    = return err
+intOp _  _ err@(Raised _ _)    = return err
+intOp op (Number x) (Number y) = return $ Number $ x `op` y
+intOp _  x          (Number _) = return $ Raised "type-error" (typeErrorMessage "Number" x)
+intOp _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage "Number" y)
+intOp _  x          _          = return $ Raised "type-error" (typeErrorMessage "Number" x)
+
+numOp :: (Double -> Double -> Double) -> LispVal -> LispVal -> Eval LispVal
+numOp _  err@(Raised _ _) _    = return err
+numOp _  _ err@(Raised _ _)    = return err
+numOp op (Number x) (Number y) = return $ Number $ truncate $ fromInteger x `op` fromInteger y
+numOp op (Float x)  (Float y)  = return $ Float $ x `op` y
+numOp op (Number x) (Float y)  = return $ Float $ fromInteger x `op` y
+numOp op (Float x)  (Number y) = return $ Float $ x `op` fromInteger y
+numOp _  x          (Number _) = return $ Raised "type-error" (typeErrorMessage "Number" x)
+numOp _  x          (Float _)  = return $ Raised "type-error" (typeErrorMessage "Float" x)
+numOp _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage "Number" y)
+numOp _  (Float _)  y          = return $ Raised "type-error" (typeErrorMessage "Float" y)
+numOp _  x          _          = return $ Raised "type-error" (typeErrorMessage "Float or Number" x)
+
+numCmp :: (Double -> Double -> Bool) -> [LispVal] -> Eval LispVal
 numCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessage 2 args)
                | otherwise       = loop fn args
  where
-    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+    loop :: (Double -> Double -> Bool) -> [LispVal] -> Eval LispVal
     loop op (a:b:rest) = cmpOne op a b >>= \case
-                             Bool True  -> loop op (b:rest)
-                             x          -> return x
+                             Bool True -> loop op (b:rest)
+                             x         -> return x
     loop _  _          = return $ Bool True
 
-    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
-    cmpOne _  err@(Raised _ _ ) _   = return err
-    cmpOne _  _ err@(Raised _ _ )   = return err
-    cmpOne op (Number x) (Number y) = return $ Bool $ x `op` y
+    cmpOne :: (Double -> Double -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne _  err@(Raised _ _) _    = return err
+    cmpOne _  _ err@(Raised _ _)    = return err
+    cmpOne op (Number x) (Number y) = return $ Bool $ fromInteger x `op` fromInteger y
+    cmpOne op (Float x)  (Float y)  = return $ Bool $ x `op` y
+    cmpOne op (Number x) (Float y)  = return $ Bool $ fromInteger x `op` y
+    cmpOne op (Float x)  (Number y) = return $ Bool $ x `op` fromInteger y
     cmpOne _  x          (Number _) = return $ Raised "type-error" (typeErrorMessage "Number" x)
-    cmpOne _  (Number _) y          = return $ Raised  "type-error" (typeErrorMessage "Number" y)
-    cmpOne _  x          _          = return $ Raised "type-error" (typeErrorMessage "Number" x)
-
-numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
-numOp _  err@(Raised _ _ ) _    = return err
-numOp _  _ err@(Raised _ _ )    = return err
-numOp op (Number x) (Number y)  = return $ Number $ op x  y
-numOp _  x          (Number _)  = return $ Raised "type-error" (typeErrorMessage "Number" x)
-numOp _  (Number _) y           = return $ Raised "type-error" (typeErrorMessage "Number" y)
-numOp _  x          _           = return $ Raised "type-error" (typeErrorMessage "Number" x)
+    cmpOne _  x          (Float _)  = return $ Raised "type-error" (typeErrorMessage "Float" x)
+    cmpOne _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage "Number" y)
+    cmpOne _  (Float _)  y          = return $ Raised "type-error" (typeErrorMessage "Float" y)
+    cmpOne _  x          _          = return $ Raised "type-error" (typeErrorMessage "Float or Number" x)
 
 --
 -- EQUIVALENCE
 --
+
+eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
+eqOp _  err@(Raised _ _ ) _ = return err
+eqOp _  _ err@(Raised _ _)  = return err
+eqOp op (Bool x) (Bool y)   = return $ Bool $ op x y
+eqOp _  x        (Bool _)   = return $ Raised "type-error" (typeErrorMessage "Bool" x)
+eqOp _  (Bool _) y          = return $ Raised "type-error" (typeErrorMessage "Bool" y)
+eqOp _  x        _          = return $ Raised "type-error" (typeErrorMessage "Bool" x)
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent err@(Raised _ _ ) _              = return err
@@ -157,6 +192,7 @@ equivalent _ err@(Raised _ _ )              = return err
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
 equivalent x@(Bool _)      y@(Bool _)       = eqBoolean x y
 equivalent x@(Character _) y@(Character _)  = eqCharacter x y
+equivalent (Float x)  (Float y)             = return . Bool $ x == y
 equivalent (List [])  (List [])             = return $ Bool True
 equivalent Nil        Nil                   = return $ Bool True
 equivalent (Number x) (Number y)            = return . Bool $ x == y
@@ -174,14 +210,6 @@ isBoolean _                 = return $ Bool False
 
 eqBoolean :: LispVal -> LispVal -> Eval LispVal
 eqBoolean = eqOp (==)
-
-eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
-eqOp _  err@(Raised _ _ ) _ = return err
-eqOp _  _ err@(Raised _ _)  = return err
-eqOp op (Bool x) (Bool y)   = return $ Bool $ op x y
-eqOp _  x        (Bool _)   = return $ Raised "type-error" (typeErrorMessage "Bool" x)
-eqOp _  (Bool _) y          = return $ Raised "type-error" (typeErrorMessage "Bool" y)
-eqOp _  x        _          = return $ Raised "type-error" (typeErrorMessage "Bool" x)
 
 isCharacter :: LispVal -> Eval LispVal
 isCharacter err@(Raised _ _) = return err
@@ -218,11 +246,6 @@ isList err@(Raised _ _ ) = return err
 isList (List _)          = return $ Bool True
 isList _                 = return $ Bool False
 
-isNumber :: LispVal -> Eval LispVal
-isNumber err@(Raised _ _)   = return err
-isNumber (Number _)         = return $ Bool True
-isNumber _                  = return $ Bool False
-
 isProcedure :: LispVal -> Eval LispVal
 isProcedure err@(Raised _ _) = return err
 isProcedure (Func _ _)       = return $ Bool True
@@ -232,6 +255,24 @@ isString :: LispVal -> Eval LispVal
 isString err@(Raised _ _)   = return err
 isString (String _)         = return $ Bool True
 isString _                  = return $ Bool False
+
+-- The most basic - all numeric types pass.
+isNumber :: LispVal -> Eval LispVal
+isNumber err@(Raised _ _)   = return err
+isNumber (Float _)          = return $ Bool True
+isNumber (Number _)         = return $ Bool True
+isNumber _                  = return $ Bool False
+
+-- Everything but complex numbers (which we don't support) pass.
+isReal :: LispVal -> Eval LispVal
+isReal (Float _)  = return $ Bool True
+isReal (Number _) = return $ Bool True
+isReal _          = return $ Bool False
+
+-- Only integers pass.
+isInteger :: LispVal -> Eval LispVal
+isInteger (Number _) = return $ Bool True
+isInteger _          = return $ Bool False
 
 --
 -- CHARACTERS

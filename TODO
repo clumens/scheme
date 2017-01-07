@@ -15,6 +15,7 @@
 * add floating point numbers
 * add pairs
 * add records (?)
+* add type checking everywhere
 * add unquote and quasiquote (?)
 * exceptions:
     - Exceptions.hs is getting way too verbose

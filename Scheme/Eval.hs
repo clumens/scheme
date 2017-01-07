@@ -175,6 +175,7 @@ eval :: LispVal -> Eval LispVal
 eval n@(Atom _)         = getVar n
 eval (Bool b)           = return $ Bool b
 eval (Character c)      = return $ Character c
+eval (Float f)          = return $ Float f
 eval e@(Condition _ _)  = return e
 eval (List [])          = return Nil
 eval Nil                = return Nil

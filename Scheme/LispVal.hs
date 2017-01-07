@@ -37,6 +37,7 @@ data LispVal = Atom T.Text
              | Bool Bool
              | Character Char
              | Condition T.Text T.Text
+             | Float Double
              | Func IFunc (Maybe SchemeSt)
              | List [LispVal]
              | Nil
@@ -61,6 +62,7 @@ showVal val = case val of
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
     Condition ty _  -> T.concat ["(", ty, ")"]
+    Float num       -> T.pack $ show num
     Func _ _        -> "(function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]
     Nil             -> "Nil"
@@ -74,6 +76,7 @@ typeOf val = case val of
     Bool _          -> "Bool"
     Character _     -> "Character"
     Condition _ _   -> "Condition"
+    Float _         -> "Float"
     List _          -> "List"
     Nil             -> "Nil"
     Number _        -> "Number"

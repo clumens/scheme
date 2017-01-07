@@ -1,0 +1,1 @@
+(real? (lambda (x) x))

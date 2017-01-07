@@ -150,6 +150,10 @@ Evaluate the `pred` expression.  If it evaluates to `#t`, return the evaluation 
 Returns `n` incremented by 1.  **NOTE:** This is a function unique to this implementation of
 scheme.  It does not occur in the standard library.
 
+`(integer? obj)`
+
+Returns `#t` only if `obj` is an integer.
+
 `(length list)`
 
 Returns the number of elements in `list`.
@@ -193,7 +197,7 @@ Returns `#t` if `obj` is the empty list, otherwise returns `#f`.
 
 `(number? obj)`
 
-Returns `#t` if `obj` is a number, otherwise returns `#f`.
+Returns `#t` if `obj` is any numeric type, otherwise returns `#f`.
 
 `(odd? n)`
 
@@ -224,6 +228,10 @@ Raise the exception object given by `obj`.  This object must have been previousl
 one of the `make-\*-error` functions.  When an exception is raised, it will propagate all the
 way up to the top level where it will cause the interpreter to stop, unless it is handled with
 a `guard` expression.
+
+`(real? obj)`
+
+Returns `#t` if `obj` is a floating point (real) number or integer.
 
 `(reverse list)`
 

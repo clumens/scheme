@@ -64,9 +64,7 @@ primEnv = [ -- Basic math.
             ("condition?",  mkF $ unop isCondition),
             ("integer?",    mkF $ unop isInteger),
             ("list?",       mkF $ unop isList),
-            -- NEEDS TESTS
             ("number?",     mkF $ unop isNumber),
-            -- NEEDS TESTS
             ("real?",       mkF $ unop isReal),
             ("procedure?",  mkF $ unop isProcedure),
             ("string?",     mkF $ unop isString),

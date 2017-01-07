@@ -1,0 +1,1 @@
+(integer? (lambda (x) x))

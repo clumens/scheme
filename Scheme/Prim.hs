@@ -41,9 +41,7 @@ primEnv = [ -- Basic math.
             (">",       mkF $ numCmp    (>)),
             (">=",      mkF $ numCmp    (>=)),
             ("=",       mkF $ numCmp    (==)),
-            -- NEEDS TESTS
             ("div",     mkF $ binop     (numOp div)),
-            -- NEEDS TESTS
             ("mod",     mkF $ binop     (numOp mod)),
 
             -- Booleans.

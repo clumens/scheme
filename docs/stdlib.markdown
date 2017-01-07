@@ -6,6 +6,10 @@
 
 These functions are used to compare a list of integers, returning `#t` or `#f` as appropriate.
 
+`(abs n)`
+
+Returns the absolute value of `n`.
+
 `(and test1 ... testN)`
 
 Returns `#t` if all test expressions evaluate to `#t`, or if there are no test expressions.
@@ -57,6 +61,11 @@ If no `test` passes, return the else `expr` if it exists.  If there is no else e
 Returns new list where the first element is `obj1` and the second element is `obj2`, which
 must be a list.
 
+`(dec n)`
+
+Returns `n` decremented by 1.  **NOTE:** This is a function unique to this implementation of
+scheme.  It does not occur in the standard library.
+
 `(define var expr)`
 
 Assign the value of `expr` to the variable named `var`.
@@ -78,6 +87,14 @@ Create a new function named `var` with one or more named formal parameters, an e
 formal parameter, and the body `body`.  All extra arguments are converted into a list and
 passed as the last parameter.  names may not be reused in a single definition.
 
+`(div x y)`
+
+Returns the integer division result of `x/y`.  `y` must not be zero.
+
+`(even? n)`
+
+Returns `#t` if `n` is even, otherwise returns `#f`.
+
 `(exists func list)`
 
 Apply `func` to each element of `list` until it returns `#t`.  If the list is empty or no
@@ -96,6 +113,11 @@ returning the matching value.  This may not be fixed.
 
 Evaluate the `pred` expression.  If it evaluates to `#t`, return the evaluation of the
 `true-expr`.  Otherwise, return the evaluation of the `false-expr`.
+
+`(inc n)`
+
+Returns `n` incremented by 1.  **NOTE:** This is a function unique to this implementation of
+scheme.  It does not occur in the standard library.
 
 `(length list)`
 
@@ -122,6 +144,10 @@ Returns a new list containing all its arguments.
 
 Returns `#t` if `obj` is a list, otherwise returns `#f`.
 
+`(mod x y)`
+
+Returns the remainder of the integer division result of `x/y`.  `y` must not be zero.
+
 `(negative? obj)`
 
 Returns `#t` when `obj` is less than zero, otherwise returns `#f`.
@@ -137,6 +163,10 @@ Returns `#t` if `obj` is the empty list, otherwise returns `#f`.
 `(number? obj)`
 
 Returns `#t` if `obj` is a number, otherwise returns `#f`.
+
+`(odd? n)`
+
+Returns `#t` if `n` is odd, otherwise returns `#f`.
 
 `(or test1 ... testN)`
 

@@ -22,7 +22,14 @@ import qualified Stdlib.List.Length.Tests
 import qualified Stdlib.List.List.Tests
 import qualified Stdlib.List.Null.Tests
 import qualified Stdlib.List.Reverse.Tests
+import qualified Stdlib.Math.Abs.Tests
+import qualified Stdlib.Math.Dec.Tests
+import qualified Stdlib.Math.Div.Tests
+import qualified Stdlib.Math.Inc.Tests
+import qualified Stdlib.Math.Mod.Tests
+import qualified Stdlib.Number.Even.Tests
 import qualified Stdlib.Number.Negative.Tests
+import qualified Stdlib.Number.Odd.Tests
 import qualified Stdlib.Number.Positive.Tests
 import qualified Stdlib.Number.Zero.Tests
 import qualified Stdlib.String.Length.Tests
@@ -50,7 +57,14 @@ main = defaultMain $ testGroup "Stdlib" [
     Stdlib.List.List.Tests.tests,
     Stdlib.List.Null.Tests.tests,
     Stdlib.List.Reverse.Tests.tests,
+    Stdlib.Math.Abs.Tests.tests,
+    Stdlib.Math.Dec.Tests.tests,
+    Stdlib.Math.Div.Tests.tests,
+    Stdlib.Math.Inc.Tests.tests,
+    Stdlib.Math.Mod.Tests.tests,
+    Stdlib.Number.Even.Tests.tests,
     Stdlib.Number.Negative.Tests.tests,
+    Stdlib.Number.Odd.Tests.tests,
     Stdlib.Number.Positive.Tests.tests,
     Stdlib.Number.Zero.Tests.tests,
     Stdlib.String.Length.Tests.tests,

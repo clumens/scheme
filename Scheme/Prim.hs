@@ -5,7 +5,7 @@ module Scheme.Prim(primEnv,
                    unop)
  where
 
-import Scheme.Exceptions(numArgsMessage, typeErrorMessage)
+import Scheme.Exceptions
 import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
 
 import           Control.Monad(foldM)
@@ -243,24 +243,26 @@ cons :: [LispVal] -> Eval LispVal
 cons [x, List yList]    = return $ List $ x:yList
 cons [c]                = return $ List [c]
 cons []                 = return $ List []
-cons x                  = return $ Error "unknown-error" (T.concat $ "Error in cons: " : map showVal x)
+cons x                  = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cons: " : map showVal x)
 
 car :: [LispVal] -> Eval LispVal
 car [List []]     = return Nil
 car [List (x:_)]  = return x
+car [x]           = return $ Error "type-error" (typeErrorMessage "List" x)
 car []            = return Nil
-car x             = return $ Error "unknown-error" (T.concat $ "Error in car: " : map showVal x)
+car x             = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in car: " : map showVal x)
 
 cdr :: [LispVal] -> Eval LispVal
 cdr [List (_:xs)] = return $ List xs
 cdr [List []]     = return Nil
+cdr [x]           = return $ Error "type-error" (typeErrorMessage "List" x)
 cdr []            = return Nil
-cdr x             = return $ Error "unknown-error" (T.concat $ "Error in cdr: " : map showVal x)
+cdr x             = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cdr: " : map showVal x)
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
-quote x           = return $ Error "unknown-error" (T.concat $ "Error in quote: " : map showVal x)
+quote x           = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in quote: " : map showVal x)
 
 --
 -- IO

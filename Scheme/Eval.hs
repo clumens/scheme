@@ -10,7 +10,7 @@ module Scheme.Eval(basicEnv,
                    runParseTest)
  where
 
-import Scheme.Exceptions(errorEnvironment, errorConstrFn, errorPredFn, internalErrorMessage, typeErrorMessage)
+import Scheme.Exceptions
 import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
@@ -65,7 +65,7 @@ getVar (Atom atom) = do
     env <- get
     case Map.lookup atom env of
         Just x  -> return x
-        Nothing -> return $ Error "unbound-error" (T.concat ["Unbound variable: ", atom])
+        Nothing -> return $ Error "unbound-error" (unboundErrorMessage atom)
 getVar n = return $ Error "type-error" (typeErrorMessage "Atom" n)
 
 --
@@ -110,7 +110,7 @@ evalText env textExpr =
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
 -- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function).
 textToEvalForm :: T.Text -> Eval LispVal
-textToEvalForm input = either (\err -> return $ Error "parse-error" (T.pack $ show err)) eval $ readExpr input
+textToEvalForm input = either (\err -> return $ Error "parse-error" (parseErrorMessage $ T.pack $ show err)) eval $ readExpr input
 
 -- Evaluate several input expressions against the given environment, returning the value and the new
 -- environment.  We always return a value because it could be an error.
@@ -121,7 +121,7 @@ evalFile env fileExpr =
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
 -- this function split out could be handy elsewhere, though that's not happening right now.
 fileToEvalForm :: T.Text -> Eval LispVal
-fileToEvalForm input = either (\err -> return $ Error "parse-error" (T.pack $ show err)) evalBody $ readExprFile input
+fileToEvalForm input = either (\err -> return $ Error "parse-error" (parseErrorMessage $ T.pack $ show err)) evalBody $ readExprFile input
 
 --
 -- Misc. helper functions
@@ -149,13 +149,13 @@ extractVar (Atom atom) = atom
 getNames :: [LispVal] -> [LispVal]
 getNames (List [x@(Atom _), _]:xs) = x : getNames xs
 getNames []                        = []
-getNames _                         = [Error "syntax-error" "let bindings list malformed"]
+getNames _                         = [Error "syntax-error" (syntaxErrorMessage "let bindings list malformed")]
 
 -- Given a list of (name value) pairs from a let-expression, extract just the values.
 getVals :: [LispVal] -> [LispVal]
 getVals (List [_, x]:xs) = x : getVals xs
 getVals []               = []
-getVals _                = [Error "syntax-error" "let bindings list malformed"]
+getVals _                = [Error "syntax-error" (syntaxErrorMessage "let bindings list malformed")]
 
 --
 -- eval - This function is used to evaluate a single scheme expression.  It takes a lot of forms, because
@@ -182,7 +182,7 @@ eval (List (Atom "apply":Atom proc:args)) = do
                          case funVar of
                              Func (IFunc fn) Nothing      -> fn realArgs
                              Func (IFunc fn) (Just bound) -> replaceEnv bound (fn realArgs)
-                             _                            -> return $ Error "type-error" (T.concat ["Not a function: ", showVal funVar])
+                             _                            -> return $ Error "type-error" (typeErrorMessage "Function" funVar)
         x       -> return $ Error "type-error" (typeErrorMessage "List" x)
 
 -- Returns an unevaluated value.
@@ -195,7 +195,7 @@ eval (List [Atom "if", predicate, trueExpr, falseExpr]) = eval predicate >>= \ca
     Bool True  -> eval trueExpr
     Bool False -> eval falseExpr
     x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
-eval (List (Atom "if":_))  = return $ Error "syntax-error" "(if <bool> <true-expr> <false-expr>)"
+eval (List (Atom "if":_))  = return $ Error "syntax-error" (syntaxErrorMessage "(if <bool> <true-expr> <false-expr>)")
 
 -- The cond expression, made up of a bunch of clauses.  The clauses are not in a list.  Each clause consists
 -- of a test and an expression.  Tests are evaluated until one returns true, in which case the matching
@@ -245,13 +245,13 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
     case break (== Atom ".") params of
         (p, [])                     -> evalNormalFunc name p
         (p, [Atom ".", Atom rest])  -> evalSpecialFunc name p rest
-        _                           -> return $ Error "syntax-error" "only one parameter may appear after '.'"
+        _                           -> return $ Error "syntax-error" (syntaxErrorMessage "only one parameter may appear after '.'")
  where
     evalNormalFunc name' params' = do
         -- Done for side effect - make sure all params are atoms.
         mapM_ ensureAtom params'
 
-        if nub params' /= params' then return $ Error "syntax-error" "duplicate names given in formal parameters list"
+        if nub params' /= params' then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in formal parameters list")
         else do
             let fn = Func (IFunc $ applyLambda expr params') Nothing
             modify (Map.insert name' fn)
@@ -265,7 +265,7 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
         -- Make sure parameter names aren't duplicated, and that includes the extra one.
         let allParams = params' ++ [Atom extra]
 
-        if nub allParams /= allParams then return $ Error "syntax-error" "duplicate names given in formal parameters list"
+        if nub allParams /= allParams then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in formal parameters list")
         else do
             let fn = Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
                                             in  applyLambda expr (params' ++ [Atom extra])
@@ -303,7 +303,7 @@ eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, At
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then return $ Error "syntax-error" "duplicate names given in let bindings"
+    if nub atoms /= atoms then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
     else do
         vals  <- mapM eval       $ getVals pairs
         augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
@@ -319,7 +319,7 @@ eval (List [Atom "let", List pairs, expr]) = do
 eval (List [Atom "let", Atom name, List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then return $ Error "syntax-error" "duplicate names given in let bindings"
+    if nub atoms /= atoms then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
     else do
         vals  <- mapM eval       $ getVals pairs
 
@@ -331,17 +331,17 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
 
         augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
             evalBody expr
-eval (List (Atom "let":_)) = return $ Error "syntax-error" "(let <pair1> ... <pairN> <body>)"
+eval (List (Atom "let":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(let <pair1> ... <pairN> <body>)")
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
 -- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) =
-    if nub params /= params then return $ Error "syntax-error" "duplicate names given in lambda parameters"
+    if nub params /= params then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
     else do
         envLocal <- get
         return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
-eval (List (Atom "lambda":_)) = return $ Error "syntax-error" "(lambda (<params>) <body>)"
+eval (List (Atom "lambda":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(lambda (<params>) <body>)")
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If
 -- so, see if it's a primitive, lambda, or normal user-defined function.  Act appropriately.  For a
@@ -353,11 +353,11 @@ eval (List (x:xs)) = do
     case funVar of
         Func (IFunc fn) Nothing         -> fn xVal
         Func (IFunc fn) (Just bound)    -> replaceEnv bound (fn xVal)
-        _                               -> return $ Error "type-error" (T.concat ["Not a function: ", showVal funVar])
+        _                               -> return $ Error "type-error" (typeErrorMessage "Function" funVar)
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
 -- that's an error.
-eval x = return $ Error "undefined-error" (T.concat ["Unknown error processing expression: ", showVal x])
+eval x = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat ["Unknown error processing expression: ", showVal x])
 
 --
 -- evalBody - This function is used to evaluate an entire file, or the beginning of the body of a let

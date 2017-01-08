@@ -5,8 +5,13 @@ module Scheme.Exceptions(defaultExceptionHandler,
                          errorConstrFn,
                          errorPredFn,
                          internalErrorMessage,
+                         ioErrorMessage,
                          numArgsMessage,
-                         typeErrorMessage)
+                         parseErrorMessage,
+                         syntaxErrorMessage,
+                         typeErrorMessage,
+                         unboundErrorMessage,
+                         undefinedErrorMessage)
  where
 
 import Scheme.LispVal(IFunc(..), LispVal(..), unwordsList, showVal, typeOf)
@@ -53,7 +58,7 @@ defaultExceptionHandler (Error "internal-error" msg) = do
     TIO.hPutStrLn stderr msg
     exitFailure
 defaultExceptionHandler (Error ty msg) =
-    TIO.hPutStrLn stderr $ T.concat ["Error: (", ty, "): ", msg]
+    TIO.hPutStrLn stderr $ T.concat ["Error: (", ty, "):\n", msg]
 defaultExceptionHandler _ = return ()
 
 errorConstrFn :: T.Text -> [LispVal] -> LispVal
@@ -66,14 +71,38 @@ errorPredFn [Error _ _]         = Bool False
 errorPredFn [x]                 = Error "type-error" (typeErrorMessage "Error" x)
 errorPredFn x                   = Error "syntax-error" (numArgsMessage 1 x)
 
+-- The following functions format an error message to be put into an exception
+-- object.  Some of them don't do anything other than just return the provided
+-- string, but they are here so formatting can be added later without having to
+-- change everywhere an exception is generated.
+--
+-- In general, the type of the exception does not need to be a part of the
+-- messages generated here because the exception object carries that information
+-- with it and it will be printed out by the exception handler.
+
 internalErrorMessage :: T.Text -> T.Text
 internalErrorMessage msg = T.concat ["*** INTERNAL ERROR: ", msg]
+
+ioErrorMessage :: T.Text -> T.Text
+ioErrorMessage msg = T.concat ["\t", msg]
 
 numArgsMessage :: Int -> [LispVal] -> T.Text
 numArgsMessage n args = T.concat ["\tExpected: ", T.pack $ show n, " arg(s)\n",
                                   "\tReceived: ", unwordsList args]
 
+parseErrorMessage :: T.Text -> T.Text
+parseErrorMessage msg = T.concat ["\t", msg]
+
+syntaxErrorMessage :: T.Text -> T.Text
+syntaxErrorMessage msg = T.concat ["\t", msg]
+
 typeErrorMessage :: T.Text -> LispVal -> T.Text
 typeErrorMessage expected got = T.concat ["\tExpected: ", expected, "\n",
                                           "\tGot:      ", typeOf got, "\n",
                                           "\tIn value: ", showVal got]
+
+unboundErrorMessage :: T.Text -> T.Text
+unboundErrorMessage atom = T.concat ["\tUnbound variable: ", atom]
+
+undefinedErrorMessage :: T.Text -> T.Text
+undefinedErrorMessage msg = T.concat ["\t", msg]

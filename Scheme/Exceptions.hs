@@ -47,7 +47,16 @@ errorEnvironment = [
     ("make-parse-error",        Func (IFunc $ \args -> return $ errorConstrFn "parse-error" args) Nothing),
     ("make-type-error",         Func (IFunc $ \args -> return $ errorConstrFn "type-error" args) Nothing),
     ("make-unbound-error",      Func (IFunc $ \args -> return $ errorConstrFn "unbound-error" args) Nothing),
-    ("make-undefined-error",    Func (IFunc $ \args -> return $ errorConstrFn "undefined-error" args) Nothing)
+    ("make-undefined-error",    Func (IFunc $ \args -> return $ errorConstrFn "undefined-error" args) Nothing),
+
+    -- Error predication functions.
+    ("div-by-zero-error?",      Func (IFunc $ \args -> return $ errorPredFn "div-by-zero-error" args) Nothing),
+    ("io-error?",               Func (IFunc $ \args -> return $ errorPredFn "io-error" args) Nothing),
+    ("syntax-error?",           Func (IFunc $ \args -> return $ errorPredFn "syntax-error" args) Nothing),
+    ("parse-error?",            Func (IFunc $ \args -> return $ errorPredFn "parse-error" args) Nothing),
+    ("type-error?",             Func (IFunc $ \args -> return $ errorPredFn "type-error" args) Nothing),
+    ("unbound-error?",          Func (IFunc $ \args -> return $ errorPredFn "unbound-error" args) Nothing),
+    ("undefined-error?",        Func (IFunc $ \args -> return $ errorPredFn "undefined-error" args) Nothing)
  ]
 
 -- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
@@ -91,10 +100,10 @@ errorConstrFn t [String msg]    = case t of
 errorConstrFn _ [x]             = Error "type-error" (typeErrorMessage "String" x)
 errorConstrFn _ x               = Error "syntax-error" (numArgsMessage 1 x)
 
-errorPredFn :: [LispVal] -> LispVal
-errorPredFn [Error _ _]         = Bool False
-errorPredFn [x]                 = Error "type-error" (typeErrorMessage "Error" x)
-errorPredFn x                   = Error "syntax-error" (numArgsMessage 1 x)
+errorPredFn :: T.Text -> [LispVal] -> LispVal
+errorPredFn t [Error ty _]      = Bool $ t == ty
+errorPredFn _ [x]               = Error "type-error" (typeErrorMessage "Error" x)
+errorPredFn _ x                 = Error "syntax-error" (numArgsMessage 1 x)
 
 -- The following functions format an error message to be put into an exception
 -- object.  Some of them don't do anything other than just return the provided

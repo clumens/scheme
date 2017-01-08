@@ -281,7 +281,7 @@ eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, At
 
     -- The predicate is a function that takes a single argument (a condition object) and returns
     -- a boolean indicating whether that object is of this condition's type or any of its supertypes.
-    let predFn = Func (IFunc $ \args -> return $ errorPredFn args) Nothing
+    let predFn = Func (IFunc $ \args -> return $ errorPredFn ty args) Nothing
     modify (Map.insert predicate predFn)
 
     -- Add the condition type to the environment.  Note that while conditions take an optional supertype,

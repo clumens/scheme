@@ -55,6 +55,8 @@ primEnv = [ -- Basic math.
             -- Type predicates.
             ("boolean?",    mkF $ unop isBoolean),
             ("char?",       mkF $ unop isCharacter),
+            -- NEEDS TESTS
+            ("condition?",  mkF $ unop isCondition),
             ("list?",       mkF $ unop isList),
             ("number?",     mkF $ unop isNumber),
             ("procedure?",  mkF $ unop isProcedure),
@@ -161,6 +163,10 @@ eqBoolean = eqOp (==)
 isCharacter :: LispVal -> Eval LispVal
 isCharacter (Character _) = return $ Bool True
 isCharacter _             = return $ Bool False
+
+isCondition :: LispVal -> Eval LispVal
+isCondition (Error _ _) = return $ Bool True
+isCondition _           = return $ Bool False
 
 eqCharacter :: LispVal -> LispVal -> Eval LispVal
 eqCharacter x y = charCmp (==) [x, y]

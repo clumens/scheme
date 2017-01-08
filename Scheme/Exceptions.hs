@@ -4,6 +4,7 @@ module Scheme.Exceptions(defaultExceptionHandler,
                          errorEnvironment,
                          errorConstrFn,
                          errorPredFn,
+                         divByZeroMessage,
                          internalErrorMessage,
                          ioErrorMessage,
                          numArgsMessage,
@@ -24,16 +25,18 @@ import           System.IO(stderr)
 errorEnvironment :: [(T.Text, LispVal)]
 errorEnvironment = [
     -- Error types.
-    ("base-error",      ErrorType Nothing),
-    ("internal-error",  ErrorType $ Just "internal-error"),
-    ("io-error",        ErrorType $ Just "base-error"),
-    ("syntax-error",    ErrorType $ Just "base-error"),
-    ("parse-error",     ErrorType $ Just "syntax-error"),
-    ("type-error",      ErrorType $ Just "base-error"),
-    ("unbound-error",   ErrorType $ Just "base-error"),
-    ("undefined-error", ErrorType $ Just "base-error"),
+    ("base-error",              ErrorType Nothing),
+    ("internal-error",          ErrorType Nothing),
+    ("div-by-zero-error",       ErrorType $ Just "base-error"),
+    ("io-error",                ErrorType $ Just "base-error"),
+    ("syntax-error",            ErrorType $ Just "base-error"),
+    ("parse-error",             ErrorType $ Just "syntax-error"),
+    ("type-error",              ErrorType $ Just "base-error"),
+    ("unbound-error",           ErrorType $ Just "base-error"),
+    ("undefined-error",         ErrorType $ Just "base-error"),
 
     -- Error making functions.
+    ("make-div-by-zero-error",  Func (IFunc $ \args -> return $ errorConstrFn "div-by-zero-error" args) Nothing),
     ("make-io-error",           Func (IFunc $ \args -> return $ errorConstrFn "io-error" args) Nothing),
     ("make-syntax-error",       Func (IFunc $ \args -> return $ errorConstrFn "syntax-error" args) Nothing),
     ("make-parse-error",        Func (IFunc $ \args -> return $ errorConstrFn "parse-error" args) Nothing),
@@ -79,6 +82,9 @@ errorPredFn x                   = Error "syntax-error" (numArgsMessage 1 x)
 -- In general, the type of the exception does not need to be a part of the
 -- messages generated here because the exception object carries that information
 -- with it and it will be printed out by the exception handler.
+
+divByZeroMessage :: T.Text
+divByZeroMessage = "\tDivide by zero"
 
 internalErrorMessage :: T.Text -> T.Text
 internalErrorMessage msg = T.concat ["*** INTERNAL ERROR: ", msg]

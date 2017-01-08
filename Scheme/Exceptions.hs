@@ -65,7 +65,13 @@ defaultExceptionHandler (Error ty msg) =
 defaultExceptionHandler _ = return ()
 
 errorConstrFn :: T.Text -> [LispVal] -> LispVal
-errorConstrFn t [String msg]    = Error t msg
+errorConstrFn t [String msg]    = case t of
+    "io-error"              -> Error t (ioErrorMessage msg)
+    "parse-error"           -> Error t (parseErrorMessage msg)
+    "syntax-error"          -> Error t (syntaxErrorMessage msg)
+    "unbound-error"         -> Error t (unboundErrorMessage msg)
+    "undefined-error"       -> Error t (undefinedErrorMessage msg)
+    _                       -> Error t (T.concat ["\t", msg])
 errorConstrFn _ [x]             = Error "type-error" (typeErrorMessage "String" x)
 errorConstrFn _ x               = Error "syntax-error" (numArgsMessage 1 x)
 

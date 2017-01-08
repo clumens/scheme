@@ -5,8 +5,8 @@ import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
 import           System.Environment(getArgs)
 
-import Scheme.Eval(basicEnv, catchHaskellExceptions, evalFile, evalText)
-import Scheme.Exceptions(defaultExceptionHandler)
+import Scheme.Eval(basicEnv, evalFile, evalText)
+import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
 import Scheme.Repl(mainLoop)
 
 main :: IO ()

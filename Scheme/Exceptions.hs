@@ -1,6 +1,9 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
-module Scheme.Exceptions(defaultExceptionHandler,
+module Scheme.Exceptions(catchHaskellExceptions,
+                         defaultExceptionHandler,
                          errorEnvironment,
                          errorConstrFn,
                          errorPredFn,
@@ -15,8 +18,10 @@ module Scheme.Exceptions(defaultExceptionHandler,
                          undefinedErrorMessage)
  where
 
-import Scheme.LispVal(IFunc(..), LispVal(..), unwordsList, showVal, typeOf)
+import Scheme.LispVal(EnvCtx, IFunc(..), LispVal(..), unwordsList, showVal, typeOf)
 
+import           Control.Exception(SomeException, try)
+import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Exit(exitFailure)
@@ -44,6 +49,17 @@ errorEnvironment = [
     ("make-unbound-error",      Func (IFunc $ \args -> return $ errorConstrFn "unbound-error" args) Nothing),
     ("make-undefined-error",    Func (IFunc $ \args -> return $ errorConstrFn "undefined-error" args) Nothing)
  ]
+
+-- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
+-- called exceptions) and convert them into a LispVal Error.  This can then be handled like any
+-- exception that occurred in scheme.
+catchHaskellExceptions :: IO (LispVal, EnvCtx) -> IO (LispVal, EnvCtx)
+catchHaskellExceptions m = try m >>= \case
+    -- It seems odd that we're returning an empty environment here.  However, internal errors are
+    -- bad and we can't recover from them.  The default exception handler will cause the
+    -- interpreter to shut down so it doesn't really matter what environment we return.
+    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), Map.empty)
+    Right val                   -> return val
 
 -- This is the top-level exception handler.  It handles all exceptions that do not get
 -- handled elsewhere.  This could either be an exception raised in scheme code that doesn't

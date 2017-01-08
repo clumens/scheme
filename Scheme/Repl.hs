@@ -4,8 +4,8 @@
 module Scheme.Repl(mainLoop)
  where
 
-import Scheme.Eval(catchHaskellExceptions, evalText)
-import Scheme.Exceptions(defaultExceptionHandler)
+import Scheme.Eval(evalText)
+import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
 import Scheme.LispVal(EnvCtx, LispVal(Error), showVal)
 
 import           Control.Monad.IO.Class(liftIO)

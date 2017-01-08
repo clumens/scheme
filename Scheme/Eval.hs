@@ -1,10 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Scheme.Eval(basicEnv,
-                   catchHaskellExceptions,
                    evalText,
                    evalFile,
                    runParseTest)
@@ -15,7 +13,6 @@ import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
 
-import           Control.Exception(SomeException, try)
 import           Control.Monad(void)
 import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
@@ -79,18 +76,6 @@ readFn :: LispVal -> Eval LispVal
 readFn x = eval x >>= \case
     String txt -> textToEvalForm txt
     val        -> return $ Error "type-error" (typeErrorMessage "String" val)
-
--- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
--- called exceptions) and convert them into a LispVal Error.  This can then be handled like any
--- exception that occurred in scheme.
-catchHaskellExceptions :: IO (LispVal, EnvCtx) -> IO (LispVal, EnvCtx)
-catchHaskellExceptions m = try m >>= \case
-    -- It seems odd that we're returning basicEnv as the environment here.  That means in the REPL,
-    -- any bindings created between startup and this exception happening will be lost.  However,
-    -- internal errors are bad and we can't recover from them.  The default exception handler will
-    -- cause the interpreter to shut down so it doesn't really matter what environment we return.
-    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), basicEnv)
-    Right val                   -> return val
 
 -- Force the evaluation of some scheme by running the StateT monad.  Return any return value given by the
 -- evaluation as well as the new environment.  This environment can in turn be fed back into the next

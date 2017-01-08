@@ -10,8 +10,8 @@ import           Test.HUnit(assertEqual)
 import           Test.Tasty(TestTree)
 import           Test.Tasty.HUnit(testCase)
 
-import Scheme.Eval(basicEnv, catchHaskellExceptions, evalText, evalFile)
-import Scheme.Exceptions(defaultExceptionHandler)
+import Scheme.Eval(basicEnv, evalText, evalFile)
+import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
 import Scheme.LispVal(showVal)
 
 mkTests :: [(FilePath, T.Text)] -> [TestTree]

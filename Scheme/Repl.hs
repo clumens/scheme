@@ -9,9 +9,11 @@ import Scheme.LispVal(EnvCtx)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)
+import           Data.List(sort)
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import           System.Console.Haskeline
+import           System.Exit(exitSuccess)
 
 type Repl a = InputT IO a
 
@@ -23,20 +25,25 @@ replSettings wds = Settings { historyFile = Nothing,
                               autoAddHistory = True,
                               complete = completeWord Nothing " \t()" $ return . searchFunc wds }
 
+validWords :: EnvCtx -> [T.Text]
+validWords env = sort $
+    Map.keys env ++
+    -- Add special words defined in Eval.hs.
+    ["apply", "begin", "cond", "define", "else", "lambda", "let", "if", "quote"]
+
 mainLoop :: EnvCtx -> IO ()
 mainLoop env = do
-    let wds = Map.keys env
-    -- Add special forms defined in Eval.hs.
-    let wds' = wds ++ ["apply", "begin", "cond", "define", "else", "lambda", "let", "if", "quote"]
-    runInputT (replSettings wds') (repl env)
+    let settings = replSettings $ validWords env
+    runInputT settings (rep env) >>= \case
+        Just env'   -> mainLoop env'
+        Nothing     -> exitSuccess
 
-repl :: EnvCtx -> Repl ()
-repl env = getInputLine "repl> " >>= \case
-    Nothing     -> outputStrLn "Goodbye."
+rep :: EnvCtx -> Repl (Maybe EnvCtx)
+rep env = getInputLine "repl> " >>= \case
+    Nothing     -> outputStrLn "Goodbye." >> return Nothing
     Just input  -> case dropWhile isSpace input of
-                       "" -> repl env
-                       i  -> liftIO (process env i) >>= repl
-    -- Just input -> (liftIO $ processToAST input) >> repl env
+                       "" -> rep env
+                       i  -> liftIO (process env i) >>= return . Just
 
 process :: EnvCtx -> String -> IO EnvCtx
 process env str = do

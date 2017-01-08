@@ -94,19 +94,6 @@ primEnv = [ -- Basic math.
             -- FIXME: Replace these with real versions.
             ("slurp",           mkF $ unop slurp) ]
 
-listToString :: LispVal -> LispVal
-listToString (List l) = let
-    doit accum []                   = String accum
-    doit accum (Character c:rest)   = doit (accum `T.append` T.singleton c) rest
-    doit _ (x:_)                    = Error "type-error" (typeErrorMessage "Character" x)
- in
-    doit "" l
-listToString x        = Error "type-error" (typeErrorMessage "List" x)
-
-stringToList :: LispVal -> LispVal
-stringToList (String s) = List $ map Character (T.unpack s)
-stringToList _          = List []
-
 --
 -- HELPERS
 --
@@ -127,17 +114,35 @@ binopFold op _ [a, b]         = op a b
 binopFold op farg args@(_:_)  = foldM op farg args
 binopFold _ _ args@[]         = return $ Error "syntax-error" (numArgsMessage 2 args)
 
+--
+-- NUMBERS
+--
+
+numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+numCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
+               | otherwise       = loop fn args
+ where
+    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = cmpOne op a b >>= \case
+                             Bool True  -> loop op (b:rest)
+                             x          -> return x
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne op (Number x) (Number y) = return $ Bool $ x `op` y
+    cmpOne _  x          (Number _) = return $ Error "type-error" (typeErrorMessage "Number" x)
+    cmpOne _  (Number _) y          = return $ Error "type-error" (typeErrorMessage "Number" y)
+    cmpOne _  x          _          = return $ Error "type-error" (typeErrorMessage "Number" x)
+
 numOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 numOp op (Number x) (Number y) = return $ Number $ op x  y
 numOp _  x          (Number _) = return $ Error "type-error" (typeErrorMessage "Number" x)
 numOp _  (Number _) y          = return $ Error "type-error" (typeErrorMessage "Number" y)
 numOp _  x          _          = return $ Error "type-error" (typeErrorMessage "Number" x)
 
-eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
-eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
-eqOp _  x        (Bool _) = return $ Error "type-error" (typeErrorMessage "Bool" x)
-eqOp _  (Bool _) y        = return $ Error "type-error" (typeErrorMessage "Bool" y)
-eqOp _  x        _        = return $ Error "type-error" (typeErrorMessage "Bool" x)
+--
+-- EQUIVALENCE
+--
 
 equivalent :: LispVal -> LispVal -> Eval LispVal
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
@@ -160,6 +165,12 @@ isBoolean _         = return $ Bool False
 eqBoolean :: LispVal -> LispVal -> Eval LispVal
 eqBoolean = eqOp (==)
 
+eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
+eqOp op (Bool x) (Bool y) = return $ Bool $ op x y
+eqOp _  x        (Bool _) = return $ Error "type-error" (typeErrorMessage "Bool" x)
+eqOp _  (Bool _) y        = return $ Error "type-error" (typeErrorMessage "Bool" y)
+eqOp _  x        _        = return $ Error "type-error" (typeErrorMessage "Bool" x)
+
 isCharacter :: LispVal -> Eval LispVal
 isCharacter (Character _) = return $ Bool True
 isCharacter _             = return $ Bool False
@@ -170,6 +181,22 @@ isCondition _           = return $ Bool False
 
 eqCharacter :: LispVal -> LispVal -> Eval LispVal
 eqCharacter x y = charCmp (==) [x, y]
+
+charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+charCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
+                | otherwise       = loop fn args
+ where
+    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+    loop op (a:b:rest) = cmpOne op a b >>= \case
+                             Bool True  -> loop op (b:rest)
+                             x          -> return x
+    loop _  _          = return $ Bool True
+
+    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne op (Character x) (Character y) = return $ Bool $ x `op` y
+    cmpOne _  x             (Character _) = return $ Error "type-error" (typeErrorMessage "Char" x)
+    cmpOne _  (Character _) y             = return $ Error "type-error" (typeErrorMessage "Char" y)
+    cmpOne _  x          _                = return $ Error "type-error" (typeErrorMessage "Char" x)
 
 isList :: LispVal -> Eval LispVal
 isList (List _)     = return $ Bool True
@@ -188,44 +215,8 @@ isString (String _) = return $ Bool True
 isString _          = return $ Bool False
 
 --
--- NUMBERS
---
-
-numCmp :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-numCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
-               | otherwise       = loop fn args
- where
-    loop :: (Integer -> Integer -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = cmpOne op a b >>= \case
-                             Bool True  -> loop op (b:rest)
-                             x          -> return x
-    loop _  _          = return $ Bool True
-
-    cmpOne :: (Integer -> Integer -> Bool) -> LispVal -> LispVal -> Eval LispVal
-    cmpOne op (Number x) (Number y) = return $ Bool $ x `op` y
-    cmpOne _  x          (Number _) = return $ Error "type-error" (typeErrorMessage "Number" x)
-    cmpOne _  (Number _) y          = return $ Error "type-error" (typeErrorMessage "Number" y)
-    cmpOne _  x          _          = return $ Error "type-error" (typeErrorMessage "Number" x)
-
---
 -- CHARACTERS
 --
-
-charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-charCmp fn args | length args < 2 = return $ Error "syntax-error" (numArgsMessage 2 args)
-                | otherwise       = loop fn args
- where
-    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
-    loop op (a:b:rest) = cmpOne op a b >>= \case
-                             Bool True  -> loop op (b:rest)
-                             x          -> return x
-    loop _  _          = return $ Bool True
-
-    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
-    cmpOne op (Character x) (Character y) = return $ Bool $ x `op` y
-    cmpOne _  x             (Character _) = return $ Error "type-error" (typeErrorMessage "Char" x)
-    cmpOne _  (Character _) y             = return $ Error "type-error" (typeErrorMessage "Char" y)
-    cmpOne _  x          _                = return $ Error "type-error" (typeErrorMessage "Char" x)
 
 charToInteger :: LispVal -> Eval LispVal
 charToInteger (Character c) = return $ Number $ toInteger $ ord c
@@ -234,6 +225,23 @@ charToInteger x             = return $ Error "type-error" (typeErrorMessage "Cha
 integerToChar :: LispVal -> Eval LispVal
 integerToChar (Number n) = return $ Character $ chr $ fromIntegral n
 integerToChar x          = return $ Error "type-error" (typeErrorMessage "Number" x)
+
+--
+-- STRINGS
+--
+
+listToString :: LispVal -> LispVal
+listToString (List l) = let
+    doit accum []                   = String accum
+    doit accum (Character c:rest)   = doit (accum `T.append` T.singleton c) rest
+    doit _ (x:_)                    = Error "type-error" (typeErrorMessage "Character" x)
+ in
+    doit "" l
+listToString x        = Error "type-error" (typeErrorMessage "List" x)
+
+stringToList :: LispVal -> LispVal
+stringToList (String s) = List $ map Character (T.unpack s)
+stringToList _          = List []
 
 --
 -- LISTS
@@ -264,6 +272,10 @@ cdr [List []]     = return Nil
 cdr [x]           = return $ Error "type-error" (typeErrorMessage "List" x)
 cdr []            = return Nil
 cdr x             = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cdr: " : map showVal x)
+
+--
+-- QUOTATION
+--
 
 quote :: [LispVal] -> Eval LispVal
 quote [List xs]   = return $ List $ Atom "quote" : xs

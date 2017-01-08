@@ -271,25 +271,29 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
 -- Example: (define-condition-type big-error base-error make-big-error big-error?)
 eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, Atom predicate]) = do
     -- Verify superTy exists in the environment before doing anything else.
+    env <- get
+    case Map.lookup superTy env of
+        Just (ErrorType _) -> do
+            -- The constructor is a function that takes a single argument (the error string) and returns
+            -- a new Error value containing that argument.  We have to pack up the type of the error as
+            -- well, so other functions can operate on it.  This will not be exposed to the user (except
+            -- indirectly, through the predicate functions).
+            let constrFn = Func (IFunc $ \args -> return $ errorConstrFn ty args) Nothing
+            modify (Map.insert constr constrFn)
 
-    -- The constructor is a function that takes a single argument (the error string) and returns
-    -- a new Error value containing that argument.  We have to pack up the type of the error as
-    -- well, so other functions can operate on it.  This will not be exposed to the user (except
-    -- indirectly, through the predicate functions).
-    let constrFn = Func (IFunc $ \args -> return $ errorConstrFn ty args) Nothing
-    modify (Map.insert constr constrFn)
+            -- The predicate is a function that takes a single argument (a condition object) and returns
+            -- a boolean indicating whether that object is of this condition's type or any of its supertypes.
+            let predFn = Func (IFunc $ \args -> return $ errorPredFn ty args) Nothing
+            modify (Map.insert predicate predFn)
 
-    -- The predicate is a function that takes a single argument (a condition object) and returns
-    -- a boolean indicating whether that object is of this condition's type or any of its supertypes.
-    let predFn = Func (IFunc $ \args -> return $ errorPredFn ty args) Nothing
-    modify (Map.insert predicate predFn)
+            -- Add the condition type to the environment.  Note that while conditions take an optional supertype,
+            -- the optional part is only so a base condition can be defined in the primitive environment.  No
+            -- user-defined condition can ever exist without a supertype.  We enforce that here with pattern
+            -- matching on the define-condition-type call.
+            modify (Map.insert ty (ErrorType $ Just superTy))
+            return (Atom ty)
 
-    -- Add the condition type to the environment.  Note that while conditions take an optional supertype,
-    -- the optional part is only so a base condition can be defined in the primitive environment.  No
-    -- user-defined condition can ever exist without a supertype.  We enforce that here with pattern
-    -- matching on the define-condition-type call.
-    modify (Map.insert ty (ErrorType $ Just superTy))
-    return (Atom ty)
+        _ -> return $ Error "syntax-error" (syntaxErrorMessage $ T.concat [superTy, " is not a valid condition type"])
 
 -- Evaluate an expression, handling exceptions if they occur.  Multiple types of exceptions
 -- can be separately handled by using a clause for each.  An else clause is also supported.  If

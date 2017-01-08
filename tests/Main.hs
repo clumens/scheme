@@ -13,6 +13,7 @@ import qualified Stdlib.Equality.List.Tests
 import qualified Stdlib.Equality.Number.Tests
 import qualified Stdlib.Equality.Procedure.Tests
 import qualified Stdlib.Equality.String.Tests
+import qualified Stdlib.List.Append.Tests
 import qualified Stdlib.List.Car.Tests
 import qualified Stdlib.List.Cdr.Tests
 import qualified Stdlib.List.Cons.Tests
@@ -32,6 +33,7 @@ import qualified Stdlib.Number.Negative.Tests
 import qualified Stdlib.Number.Odd.Tests
 import qualified Stdlib.Number.Positive.Tests
 import qualified Stdlib.Number.Zero.Tests
+import qualified Stdlib.Quotation.Quote.Tests
 import qualified Stdlib.String.Length.Tests
 import qualified Stdlib.String.StringToList.Tests
 
@@ -48,6 +50,7 @@ main = defaultMain $ testGroup "Stdlib" [
     Stdlib.Equality.Number.Tests.tests,
     Stdlib.Equality.Procedure.Tests.tests,
     Stdlib.Equality.String.Tests.tests,
+    Stdlib.List.Append.Tests.tests,
     Stdlib.List.Car.Tests.tests,
     Stdlib.List.Cdr.Tests.tests,
     Stdlib.List.Cons.Tests.tests,
@@ -67,6 +70,7 @@ main = defaultMain $ testGroup "Stdlib" [
     Stdlib.Number.Odd.Tests.tests,
     Stdlib.Number.Positive.Tests.tests,
     Stdlib.Number.Zero.Tests.tests,
+    Stdlib.Quotation.Quote.Tests.tests,
     Stdlib.String.Length.Tests.tests,
     Stdlib.String.StringToList.Tests.tests
  ]

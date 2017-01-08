@@ -65,7 +65,6 @@
               ((fn (car lst))   (for-all fn (cdr lst)))
               (else             #f)))
 (define (length lst) (fold-left inc 0 lst))
-; NEEDS TESTS
 (define (list . objs) objs)
 ; NEEDS TESTS
 (define (list-ref lst k)

@@ -16,6 +16,12 @@ Returns `#t` if all test expressions evaluate to `#t`, or if there are no test e
 Otherwise, returns `#f`.  **NOTE:** This function differs from standard scheme.  It does not
 return the value of the last test.
 
+`(append list1 ... listN)`
+
+Returns a new list consisting of the elements of the first list, followed by the elements of
+every other list in order.  **NOTE:** This function differs from standard scheme.  It does not
+take an object as its last argument.  All arguments must be lists.
+
 `(apply proc arg1 ... rest-args)`
 
 Call the procedure `proc` with the given arguments.  `rest-args` is the only argument that

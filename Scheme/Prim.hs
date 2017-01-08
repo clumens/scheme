@@ -72,12 +72,12 @@ primEnv = [ -- Basic math.
             ("string->list",    mkF $ unop $ return . stringToList),
 
             -- Lists.
-            -- NEEDS TESTS
             ("append",  mkF $ binopFold append (List [])),
             ("cons",    mkF Scheme.Prim.cons),
             ("car",     mkF Scheme.Prim.car),
             ("cdr",     mkF Scheme.Prim.cdr),
-            -- NEEDS TESTS
+
+            -- Quotation.
             ("quote",   mkF quote),
 
             -- Code.

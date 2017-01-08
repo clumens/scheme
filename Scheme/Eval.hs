@@ -4,15 +4,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Scheme.Eval(basicEnv,
+                   catchHaskellExceptions,
                    evalText,
-                   execText,
                    evalFile,
-                   execFile,
-                   runParseTest,
-                   safeExec)
+                   runParseTest)
  where
 
-import Scheme.Exceptions(errorEnvironment, errorConstrFn, errorPredFn, typeErrorMessage)
+import Scheme.Exceptions(errorEnvironment, errorConstrFn, errorPredFn, internalErrorMessage, typeErrorMessage)
 import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
@@ -22,7 +20,6 @@ import           Control.Monad(void)
 import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import qualified Data.Map as Map
 import           Data.Monoid((<>))
 
@@ -84,12 +81,16 @@ readFn x = eval x >>= \case
     val        -> return $ Error "type-error" (typeErrorMessage "String" val)
 
 -- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
--- called exceptions) and convert them into an Either value.  This can then be printed to the screen
--- in the REPL (or just o the console if being run non-interactively, I guess).
-safeExec :: IO a -> IO (Either String a)
-safeExec m = try m >>= \case
-    Left (exn :: SomeException) -> return $ Left ("*** INTERNAL ERROR: " ++ show exn)
-    Right val                   -> return $ Right val
+-- called exceptions) and convert them into a LispVal Error.  This can then be handled like any
+-- exception that occurred in scheme.
+catchHaskellExceptions :: IO (LispVal, EnvCtx) -> IO (LispVal, EnvCtx)
+catchHaskellExceptions m = try m >>= \case
+    -- It seems odd that we're returning basicEnv as the environment here.  That means in the REPL,
+    -- any bindings created between startup and this exception happening will be lost.  However,
+    -- internal errors are bad and we can't recover from them.  The default exception handler will
+    -- cause the interpreter to shut down so it doesn't really matter what environment we return.
+    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), basicEnv)
+    Right val                   -> return val
 
 -- Force the evaluation of some scheme by running the StateT monad.  Return any return value given by the
 -- evaluation as well as the new environment.  This environment can in turn be fed back into the next
@@ -100,46 +101,22 @@ runASTinEnv code action = runStateT (unEval action) code
 runParseTest :: T.Text -> T.Text
 runParseTest input = either (T.pack . show) showVal $ readExpr input
 
--- The next two functions are for evaluating a string of input, which had better be just a single scheme
--- expression.  This is used by the REPL.
-
--- Evaluate a single input expression against the given environment, returning the value and discarding
--- the new environment.
-evalText :: EnvCtx -> T.Text -> IO LispVal
-evalText env textExpr = do
-    (result, _) <- runASTinEnv env $ textToEvalForm textExpr
-    return result
-
--- Evaluate a single input expression against the given environment, returning the new environment.
--- The environment could have been augmented with new bindings.
-execText :: EnvCtx -> T.Text -> IO EnvCtx
-execText env textExpr = do
-    (result, env') <- runASTinEnv env $ textToEvalForm textExpr
-    TIO.putStrLn $ showVal result
-    return env'
+-- Evaluate a single input expression against the given environment, returning the value and the new
+-- environment.  We always return a value because it could be an Error.
+evalText :: EnvCtx -> T.Text -> IO (LispVal, EnvCtx)
+evalText env textExpr =
+    runASTinEnv env $ textToEvalForm textExpr
 
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
--- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function.
+-- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function).
 textToEvalForm :: T.Text -> Eval LispVal
 textToEvalForm input = either (\err -> return $ Error "parse-error" (T.pack $ show err)) eval $ readExpr input
 
--- The next two functions are for evaluating a string of input, which could be many scheme expressions, as
--- would happen when reading a file from disk.  This is useful for reading in a standard library, or some user
--- provided file.
-
--- Evaluate several input expressions against the given environment, returning the value and discarding
--- the new environment.
-evalFile :: EnvCtx -> T.Text -> IO LispVal
-evalFile env fileExpr = do
-    (result, _) <- runASTinEnv env $ fileToEvalForm fileExpr
-    return result
-
--- Evaluate several input expressions against the given environment, returning the new environment.
--- The environment could have been augmented with new bindings.
-execFile :: EnvCtx -> T.Text -> IO EnvCtx
-execFile env fileExpr = do
-    (_, env') <- runASTinEnv env $ fileToEvalForm fileExpr
-    return env'
+-- Evaluate several input expressions against the given environment, returning the value and the new
+-- environment.  We always return a value because it could be an error.
+evalFile :: EnvCtx -> T.Text -> IO (LispVal, EnvCtx)
+evalFile env fileExpr =
+    runASTinEnv env $ fileToEvalForm fileExpr
 
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
 -- this function split out could be handy elsewhere, though that's not happening right now.

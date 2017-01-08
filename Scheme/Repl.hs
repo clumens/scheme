@@ -4,14 +4,16 @@
 module Scheme.Repl(mainLoop)
  where
 
-import Scheme.Eval(execText, safeExec)
-import Scheme.LispVal(EnvCtx)
+import Scheme.Eval(catchHaskellExceptions, evalText)
+import Scheme.Exceptions(defaultExceptionHandler)
+import Scheme.LispVal(EnvCtx, LispVal(Error), showVal)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)
 import           Data.List(sort)
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import           System.Console.Haskeline
 import           System.Exit(exitSuccess)
 
@@ -40,14 +42,16 @@ mainLoop env = do
 
 rep :: EnvCtx -> Repl (Maybe EnvCtx)
 rep env = getInputLine "repl> " >>= \case
-    Nothing     -> outputStrLn "Goodbye." >> return Nothing
+    Nothing     -> return Nothing
     Just input  -> case dropWhile isSpace input of
                        "" -> rep env
                        i  -> liftIO (process env i) >>= return . Just
 
 process :: EnvCtx -> String -> IO EnvCtx
 process env str = do
-    res <- safeExec $ execText env $ T.pack str
-    case res of
-        Left err   -> putStrLn err >> return env
-        Right env' -> return env'
+    (ret, env') <- catchHaskellExceptions $ evalText env $ T.pack str
+    case ret of
+        Error _ _   -> defaultExceptionHandler ret
+        result      -> TIO.putStrLn $ showVal result
+
+    return env'

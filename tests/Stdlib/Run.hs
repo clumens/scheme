@@ -10,7 +10,8 @@ import           Test.HUnit(assertEqual)
 import           Test.Tasty(TestTree)
 import           Test.Tasty.HUnit(testCase)
 
-import Scheme.Eval(basicEnv, evalText, execFile)
+import Scheme.Eval(basicEnv, catchHaskellExceptions, evalText, evalFile)
+import Scheme.Exceptions(defaultExceptionHandler)
 import Scheme.LispVal(showVal)
 
 mkTests :: [(FilePath, T.Text)] -> [TestTree]
@@ -20,8 +21,14 @@ mkTests = map (\(fn, expected) -> testCase (takeFileName fn) $ do
 
 run :: FilePath -> IO T.Text
 run fn = do
-    stdlib <- TIO.readFile "library.scm"
-    env <- execFile basicEnv stdlib
+    -- Read in the standard library.
+    stdlib   <- TIO.readFile "library.scm"
+    (val, env) <- evalFile basicEnv stdlib
+    -- We only care about val here because it could be an error.  If it is, this
+    -- will cause it to be handled correctly.  If it's not an error, this call will
+    -- do nothing so it's safe call regardless.
+    defaultExceptionHandler val
 
     s <- TIO.readFile fn
-    showVal <$> evalText env s
+    (ret, _) <- catchHaskellExceptions $ evalText env s
+    return $ showVal ret

@@ -158,6 +158,10 @@ eval Nil            = return Nil
 eval (Number i)     = return $ Number i
 eval (String s)     = return $ String s
 
+-- Call a procedure, passing all the other values as arguments to the procedure.  This is
+-- effectively a way of undoing a list, and passing the results to a procedure.  In the
+-- argument list, the last item must be a list.
+-- Example: (apply + 1 2 (list 3 4))
 eval (List (Atom "apply":Atom proc:args)) = do
     funVar <- eval (Atom proc)
     xVal   <- mapM eval args
@@ -190,16 +194,16 @@ eval (List (Atom "cond":clauses)) =
  where
     -- Handle a single condition - evaluate the test and if it's true, return the evaluation of the
     -- expression.  If it's false, try the next condition.  If it's not boolean, raise an error.
-    tryOne (List [test, expr]:rest)     = eval test >>= \case
-                                              Bool True  -> eval expr
-                                              Bool False -> tryOne rest
-                                              x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
+    tryOne (List [test, expr]:rest) = eval test >>= \case
+                                          Bool True  -> eval expr
+                                          Bool False -> tryOne rest
+                                          x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
     -- If there's just a test without an expression, return the evaluation of the test.
-    tryOne [List [test]]                = eval test
+    tryOne [List [test]]            = eval test
     -- If we got here, we ran out of cases without seeing an else.  The return value is implementation
     -- defined behavior, so I'm just returning false.
-    tryOne []                           = return $ Bool False
-    tryOne (x:_)                        = return $ Error "type-error" (typeErrorMessage "Atom or Expr" x)
+    tryOne []                       = return $ Bool False
+    tryOne (x:_)                    = return $ Error "type-error" (typeErrorMessage "Atom or Expr" x)
 
 -- Evaluate a sequence of expressions.  The main value of this seems to be that it's like let, but doesn't
 -- require any variable definitions.
@@ -259,6 +263,12 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
             modify (Map.insert name' fn)
             return (Atom name')
 
+-- Define a new error condition type.  The condition must be a subclass of some other
+-- condition type that already exists.  The other arguments are the name of a function that
+-- is used to construct a new object of this type and the name of a function that is used
+-- to determine whether an object is of this type or not.  The constructor function currently
+-- only takes one parameter, an error message.
+-- Example: (define-condition-type big-error base-error make-big-error big-error?)
 eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, Atom predicate]) = do
     -- Verify superTy exists in the environment before doing anything else.
 
@@ -280,6 +290,36 @@ eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, At
     -- matching on the define-condition-type call.
     modify (Map.insert ty (ErrorType $ Just superTy))
     return (Atom ty)
+
+-- Evaluate an expression, handling exceptions if they occur.  Multiple types of exceptions
+-- can be separately handled by using a clause for each.  An else clause is also supported.  If
+-- no handler is found, the exception is re-raised.
+-- Example: (guard (exn ((condition? exn) '12)) (make-io-error "oh no"))
+--          (guard (exn (#f '12) (else '13)) (make-io-error "oh no"))
+eval (List [Atom "guard", List (Atom var:clauses), body]) = eval body >>= \case
+    -- If evaluating the body raised an error, put the error object into the
+    -- environment with the name given by the guard and start evaluating clauses
+    -- until one matches.
+    err@(Error _ _) -> augmentEnv [(var, err)] $
+                           tryOne err clauses
+    -- No error was encountered, so just return the value of the body.
+    val             -> return val
+ where
+    -- Handle a single condition - evaluate the test and if it's true, return the evaluation of the
+    -- expression.  If it's false, try the next condition.  If it's not boolean, raise an error.  If
+    -- another error was encountered while evaluating the test, raise that as a new error.
+    tryOne err (List [test, expr]:rest) = eval test >>= \case
+                                              e@(Error _ _) -> return e
+                                              Bool True     -> eval expr
+                                              Bool False    -> tryOne err rest
+                                              x             -> return $ Error "type-error" (typeErrorMessage "Bool" x)
+    -- If there's just a test without an expression, return the evaluation of the test.
+    tryOne _   [List [test]]            = eval test
+    -- If we got here, we ran out of cases without seeing an else.  Re-raise
+    -- the original error.
+    tryOne err []                       = return err
+    tryOne _   (x:_)                    = return $ Error "type-error" (typeErrorMessage "Atom or Expr" x)
+eval (List (Atom "guard":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(guard (<var> <clause1> ... <clauseN>) <expr>)")
 
 -- Locally define a list of variables, add them to the environment, and then execute the body in that
 -- environment.

@@ -90,13 +90,40 @@ defaultExceptionHandler (Error ty msg) =
 defaultExceptionHandler _ = return ()
 
 errorConstrFn :: T.Text -> [LispVal] -> LispVal
-errorConstrFn t [String msg]    = case t of
-    "io-error"              -> Error t (ioErrorMessage msg)
-    "parse-error"           -> Error t (parseErrorMessage msg)
-    "syntax-error"          -> Error t (syntaxErrorMessage msg)
-    "unbound-error"         -> Error t (unboundErrorMessage msg)
-    "undefined-error"       -> Error t (undefinedErrorMessage msg)
-    _                       -> Error t (T.concat ["\t", msg])
+-- div-by-zero-error takes no arguments.
+errorConstrFn "div-by-zero-error" []    = Error "div-by-zero-error" divByZeroMessage
+errorConstrFn "div-by-zero-error" x     = Error "syntax-error" (numArgsMessage 0 x)
+-- io-error takes one argument: A message
+errorConstrFn "io-error" [String msg]   = Error "io-error" (ioErrorMessage msg)
+errorConstrFn "io-error" [x]            = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "io-error" x              = Error "syntax-error" (numArgsMessage 1 x)
+-- syntax-error takes one argument: A message
+-- FIXME: Maybe it should take two, the other being the expression
+errorConstrFn "syntax-error" [String msg]   = Error "syntax-error" (syntaxErrorMessage msg)
+errorConstrFn "syntax-error" [x]            = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "syntax-error" x              = Error "syntax-error" (numArgsMessage 1 x)
+-- parse-error takes one argument: A message
+errorConstrFn "parse-error" [String msg]    = Error "parse-error" (parseErrorMessage msg)
+errorConstrFn "parse-error" [x]             = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "parse-error" x               = Error "syntax-error" (numArgsMessage 1 x)
+-- type-error takes two arguments: The expected type, and the actual value that had an error.
+errorConstrFn "type-error" [String expected, x] = Error "type-error" (typeErrorMessage expected x)
+errorConstrFn "type-error" [x, _]               = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "type-error" x                    = Error "syntax-error" (numArgsMessage 2 x)
+-- unbound-error takes one argument: A message
+errorConstrFn "unbound-error" [String msg]  = Error "unbound-error" (unboundErrorMessage msg)
+errorConstrFn "unbound-error" [x]           = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "unbound-error" x             = Error "syntax-error" (numArgsMessage 2 x)
+-- undefined-error takes one argument: A message
+errorConstrFn "undefined-error" [String msg]    = Error "undefined-error" (undefinedErrorMessage msg)
+errorConstrFn "undefined-error" [x]             = Error "type-error" (typeErrorMessage "String" x)
+errorConstrFn "undefined-error" x               = Error "syntax-error" (numArgsMessage 2 x)
+-- You can't create a base-error or internal-error via scheme, so getting here with
+-- one of those is an error.
+errorConstrFn "base-error"      _   = Error "syntax-error" (syntaxErrorMessage "Directly creating a base-error is not allowed")
+errorConstrFn "internal-error"  _   = Error "internal-error" (syntaxErrorMessage "Directly creating an internal-error is not allowed")
+-- Any other value is a user-created error.  Those can only take one argument (for now).
+errorConstrFn t [String msg]    = Error t (T.concat ["\t", msg])
 errorConstrFn _ [x]             = Error "type-error" (typeErrorMessage "String" x)
 errorConstrFn _ x               = Error "syntax-error" (numArgsMessage 1 x)
 

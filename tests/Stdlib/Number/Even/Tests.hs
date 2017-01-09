@@ -14,7 +14,7 @@ testData = [
     ("tests/Stdlib/Number/Even/even-02.scm", "#t"),
     ("tests/Stdlib/Number/Even/even-03.scm", "#t"),
     ("tests/Stdlib/Number/Even/even-04.scm", "#f"),
-    ("tests/Stdlib/Number/Even/even-05.scm", "EXCEPTION")
+    ("tests/Stdlib/Number/Even/even-05.scm", "Error (type-error):\n\tExpected: Number\n\tGot:      List\n\tIn value: (1 2 3)")
  ]
 
 tests :: TestTree

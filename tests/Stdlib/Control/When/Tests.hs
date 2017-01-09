@@ -12,7 +12,7 @@ testData :: [(FilePath, T.Text)]
 testData = [
     ("tests/Stdlib/Control/When/when-01.scm", "greater"),
     ("tests/Stdlib/Control/When/when-02.scm", "#f"),
-    ("tests/Stdlib/Control/When/when-03.scm", "EXCEPTION")
+    ("tests/Stdlib/Control/When/when-03.scm", "Error (type-error):\n\tExpected: Bool\n\tGot:      Number\n\tIn value: 3")
  ]
 
 tests :: TestTree

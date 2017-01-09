@@ -14,7 +14,7 @@ testData = [
     ("tests/Stdlib/List/Append/append-02.scm", "(a b c d)"),
     ("tests/Stdlib/List/Append/append-03.scm", "(a (b) (c))"),
     ("tests/Stdlib/List/Append/append-04.scm", "(a)"),
-    ("tests/Stdlib/List/Append/append-05.scm", "EXCEPTION")
+    ("tests/Stdlib/List/Append/append-05.scm", "Error (type-error):\n\tExpected: List\n\tGot:      Atom\n\tIn value: x")
  ]
 
 tests :: TestTree

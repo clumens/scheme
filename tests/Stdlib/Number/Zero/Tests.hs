@@ -13,7 +13,7 @@ testData = [
     ("tests/Stdlib/Number/Zero/zero-01.scm", "#f"),
     ("tests/Stdlib/Number/Zero/zero-02.scm", "#t"),
     ("tests/Stdlib/Number/Zero/zero-03.scm", "#f"),
-    ("tests/Stdlib/Number/Zero/zero-04.scm", "EXCEPTION")
+    ("tests/Stdlib/Number/Zero/zero-04.scm", "Error (type-error):\n\tExpected: Number\n\tGot:      List\n\tIn value: ()")
  ]
 
 tests :: TestTree

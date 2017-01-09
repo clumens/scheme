@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Scheme.Eval(basicEnv,
                    evalText,
@@ -13,7 +14,6 @@ import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
 
-import           Control.Monad(void)
 import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
 import qualified Data.Text as T
@@ -123,7 +123,7 @@ applyLambda expr params args =
 -- Check that a LispVal is an Atom, raising an exception if this is not the case.  This is used in various places
 -- to ensure that a name is given for a a variable, function, etc.
 ensureAtom :: LispVal -> Eval LispVal
-ensureAtom n@(Atom _) = return  n
+ensureAtom n@(Atom _) = return n
 ensureAtom n          = return $ Error "type-error" (typeErrorMessage "Atom" n)
 
 -- Extract the name out of an Atom.
@@ -142,6 +142,22 @@ getVals (List [_, x]:xs) = x : getVals xs
 getVals []               = []
 getVals _                = [Error "syntax-error" (syntaxErrorMessage "let bindings list malformed")]
 
+-- Evaluate a list of expressions (like, the parameters to a function).  If one results in an
+-- error, stop evaluating and return just that error.  If there are no errors, return the results
+-- as a list.
+mapEval :: [LispVal] -> Eval (Either LispVal [LispVal])
+mapEval lst = doit [] lst
+ where
+    doit accum []       = return $ Right accum
+    doit accum (x:xs)   = eval x >>= \case
+        err@(Error _ _) -> return $ Left err
+        e               -> doit (accum ++ [e]) xs
+
+-- Make an error message for the extremely unlikely case that mapEval ever returns something
+-- other than a [LispVal] or an Error.  But it makes -Wall happy.
+mkMapEvalError :: LispVal -> Eval LispVal
+mkMapEvalError x = return $ Error "internal-error" (internalErrorMessage $ T.concat ["mapEval returned unexpected value: ", showVal x])
+
 --
 -- eval - This function is used to evaluate a single scheme expression.  It takes a lot of forms, because
 -- there are a lot of possibilities.  This function can't handle a list of expressions, like would be found
@@ -153,6 +169,7 @@ eval :: LispVal -> Eval LispVal
 eval n@(Atom _)     = getVar n
 eval (Bool b)       = return $ Bool b
 eval (Character c)  = return $ Character c
+eval e@(Error _ _)  = return e
 eval (List [])      = return Nil
 eval Nil            = return Nil
 eval (Number i)     = return $ Number i
@@ -162,17 +179,18 @@ eval (String s)     = return $ String s
 -- effectively a way of undoing a list, and passing the results to a procedure.  In the
 -- argument list, the last item must be a list.
 -- Example: (apply + 1 2 (list 3 4))
-eval (List (Atom "apply":Atom proc:args)) = do
-    funVar <- eval (Atom proc)
-    xVal   <- mapM eval args
-
-    case last xVal of
-        List extra -> do let realArgs = init xVal ++ extra
-                         case funVar of
-                             Func (IFunc fn) Nothing      -> fn realArgs
-                             Func (IFunc fn) (Just bound) -> replaceEnv bound (fn realArgs)
-                             _                            -> return $ Error "type-error" (typeErrorMessage "Function" funVar)
-        x       -> return $ Error "type-error" (typeErrorMessage "List" x)
+eval (List (Atom "apply":Atom proc:args)) =
+    mapEval args >>= \case
+        Left (err@(Error _ _))              -> return err
+        Left x                              -> mkMapEvalError x
+        Right (reverse -> (List extra):xs)  -> do let realArgs = xs ++ extra
+                                                  eval (Atom proc) >>= \case
+                                                      Func (IFunc fn) Nothing       -> fn realArgs
+                                                      Func (IFunc fn) (Just bound)  -> replaceEnv bound (fn realArgs)
+                                                      e                             -> return $ Error "type-error" (typeErrorMessage "Function" e)
+        Right (reverse -> x:_)              -> return $ Error "type-error" (typeErrorMessage "List" x)
+        Right _                             -> return $ Error "syntax-error" (syntaxErrorMessage "(apply <proc> <arg1> ... <argN>)")
+eval (List (Atom "apply":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(apply <proc> <arg1> ... <argN>)")
 
 -- Returns an unevaluated value.
 -- Example: (quote 12)
@@ -181,9 +199,10 @@ eval (List [Atom "quote", val]) = return val
 -- The standard if/then/else expression.  Both then and else clauses are required, unlike real scheme.
 -- Example: (if #t 100 200)
 eval (List [Atom "if", predicate, trueExpr, falseExpr]) = eval predicate >>= \case
-    Bool True  -> eval trueExpr
-    Bool False -> eval falseExpr
-    x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
+    err@(Error _ _) -> return err
+    Bool True       -> eval trueExpr
+    Bool False      -> eval falseExpr
+    x               -> return $ Error "type-error" (typeErrorMessage "Bool" x)
 eval (List (Atom "if":_))  = return $ Error "syntax-error" (syntaxErrorMessage "(if <bool> <true-expr> <false-expr>)")
 
 -- The cond expression, made up of a bunch of clauses.  The clauses are not in a list.  Each clause consists
@@ -195,9 +214,10 @@ eval (List (Atom "cond":clauses)) =
     -- Handle a single condition - evaluate the test and if it's true, return the evaluation of the
     -- expression.  If it's false, try the next condition.  If it's not boolean, raise an error.
     tryOne (List [test, expr]:rest) = eval test >>= \case
-                                          Bool True  -> eval expr
-                                          Bool False -> tryOne rest
-                                          x          -> return $ Error "type-error" (typeErrorMessage "Bool" x)
+                                          e@(Error _ _) -> return e
+                                          Bool True     -> eval expr
+                                          Bool False    -> tryOne rest
+                                          x             -> return $ Error "type-error" (typeErrorMessage "Bool" x)
     -- If there's just a test without an expression, return the evaluation of the test.
     tryOne [List [test]]            = eval test
     -- If we got here, we ran out of cases without seeing an else.  The return value is implementation
@@ -218,10 +238,11 @@ eval (List (Atom "begin":rest))  = evalBody $ List rest
 -- begin or let expression.
 -- Example: (define x "hello, world!")
 --          (define y (lambda (x) (+ 1 x)))
-eval (List [Atom "define", varAtom@(Atom _), expr]) = do
-    evalVal <- eval expr
-    modify (Map.insert (extractVar varAtom) evalVal)
-    return varAtom
+eval (List [Atom "define", varAtom@(Atom _), expr]) =
+    eval expr >>= \case
+        err@(Error _ _) -> return err
+        evalVal         -> do modify (Map.insert (extractVar varAtom) evalVal)
+                              return varAtom
 
 -- Define a function with a list of parameters (the first of which is the name of the function) and a body.
 -- The list of parameters may optionally include a ".", in which case one parameter may follow the dot.  At
@@ -294,6 +315,7 @@ eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, At
             return (Atom ty)
 
         _ -> return $ Error "syntax-error" (syntaxErrorMessage $ T.concat [superTy, " is not a valid condition type"])
+eval (List (Atom "define-condition-type":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(define-condition-type ty super constr pred)")
 
 -- Evaluate an expression, handling exceptions if they occur.  Multiple types of exceptions
 -- can be separately handled by using a clause for each.  An else clause is also supported.  If
@@ -332,11 +354,13 @@ eval (List (Atom "guard":_)) = return $ Error "syntax-error" (syntaxErrorMessage
 eval (List [Atom "let", List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
-    else do
-        vals  <- mapM eval       $ getVals pairs
-        augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
-            evalBody expr
+    if nub atoms /= atoms
+    then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
+    else mapEval (getVals pairs) >>= \case
+        Left (err@(Error _ _))  -> return err
+        Left x                  -> mkMapEvalError x
+        Right vals              -> augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
+                                       evalBody expr
 
 -- Named let allows you do give a name to the body of the let, and then refer to this name within the body.
 -- This lets you define a recursive or looping function.  This function takes as parameters everything
@@ -348,25 +372,28 @@ eval (List [Atom "let", List pairs, expr]) = do
 eval (List [Atom "let", Atom name, List pairs, expr]) = do
     atoms <- mapM ensureAtom $ getNames pairs
 
-    if nub atoms /= atoms then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
-    else do
-        vals  <- mapM eval       $ getVals pairs
+    if nub atoms /= atoms
+    then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
+    else mapEval (getVals pairs) >>= \case
+        Left (err@(Error _ _))  -> return err
+        Left x                  -> mkMapEvalError x
+        Right vals              -> do
+            -- Add another binding to the environment - a function with the name given, and whose body is the body
+            -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
+            let atoms'  = Atom name : atoms
+            let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
+            let vals'   = fn : vals
 
-        -- Add another binding to the environment - a function with the name given, and whose body is the body
-        -- of the let.  Also add the names of the variables defined in the let as the parameters to that function.
-        let atoms'  = Atom name : atoms
-        let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
-        let vals'   = fn : vals
-
-        augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
-            evalBody expr
+            augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
+                evalBody expr
 eval (List (Atom "let":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(let <pair1> ... <pairN> <body>)")
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
 -- current environment and pack that up with the lambda's definition.
 -- Example: (lambda (x) (* 10 x))
 eval (List [Atom "lambda", List params, expr]) =
-    if nub params /= params then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
+    if nub params /= params
+    then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
     else do
         envLocal <- get
         return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
@@ -376,13 +403,17 @@ eval (List (Atom "lambda":_)) = return $ Error "syntax-error" (syntaxErrorMessag
 -- so, see if it's a primitive, lambda, or normal user-defined function.  Act appropriately.  For a
 -- lambda, that means using the packed up environment instead of the current one.
 -- Example: (inc 5)
-eval (List (x:xs)) = do
-    funVar <- eval x
-    xVal   <- mapM eval xs
-    case funVar of
-        Func (IFunc fn) Nothing         -> fn xVal
-        Func (IFunc fn) (Just bound)    -> replaceEnv bound (fn xVal)
-        _                               -> return $ Error "type-error" (typeErrorMessage "Function" funVar)
+eval (List (x:xs)) = eval x >>= \case
+    err@(Error _ _)                 -> return err
+    Func (IFunc fn) Nothing         -> do mapEval xs >>= \case
+                                              Left (err@(Error _ _))    -> return err
+                                              Left e                    -> mkMapEvalError e
+                                              Right xVal                -> fn xVal
+    Func (IFunc fn) (Just bound)    -> do mapEval xs >>= \case
+                                              Left (err@(Error _ _))    -> return err
+                                              Left e                    -> mkMapEvalError e
+                                              Right xVal                -> replaceEnv bound (fn xVal)
+    _                               -> return $ Error "type-error" (typeErrorMessage "Function" x)
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
 -- that's an error.
@@ -398,26 +429,29 @@ eval x = return $ Error "undefined-error" (undefinedErrorMessage $ T.concat ["Un
 
 -- I have no idea when this form gets used.
 evalBody :: LispVal -> Eval LispVal
-evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) = do
-    evalVal <- eval defExpr
-    modify (Map.insert var evalVal)
-    eval rest
+evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) =
+    eval defExpr >>= \case
+        err@(Error _ _) -> return err
+        evalVal         -> do modify (Map.insert var evalVal)
+                              eval rest
 
 -- Define a value, like so: (define x 1).
 --                      or: (define x (lambda (y) 1))
-evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) = do
-    evalVal <- eval defExpr
-    modify (Map.insert var evalVal)
-    evalBody $ List rest
+evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) =
+    eval defExpr >>= \case
+        err@(Error _ _) -> return err
+        evalVal         -> do modify (Map.insert var evalVal)
+                              evalBody $ List rest
 
 -- Define a function, like so: (define (add x y) (+ x y))
 --                         or: (define (id x) x)
-evalBody (List (defn@(List [Atom "define", List _, _]):rest)) = do
+evalBody (List (defn@(List [Atom "define", List _, _]):rest)) =
     -- Evaluate the definition of the function using the eval version above.  We ignore the
     -- return value because there's no need to do anything with it.  That function handles adding
     -- it to the environment.
-    void $ eval defn
-    evalBody $ List rest
+    eval defn >>= \case
+        err@(Error _ _) -> return err
+        _               -> evalBody $ List rest
 
 -- Catch anything that didn't get matched already.
 evalBody x = eval x

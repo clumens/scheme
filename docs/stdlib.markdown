@@ -1,3 +1,5 @@
+# Standard Library
+
 `(= i1 ... in)`
 `(< i1 ... in)`
 `(> i1 ... in)`
@@ -62,6 +64,11 @@ Evaluate `test` expressions until one returns `#t`.  When that happens, return t
 If no `test` passes, return the else `expr` if it exists.  If there is no else expression, return
 `#f`.
 
+`(condition? obj)`
+
+Returns `#t` if `obj` is any error object, such as that returned from the various `make-*-error`
+functions.  Returns `#f` otherwise.
+
 `(cons obj1 obj2)`
 
 Returns new list where the first element is `obj1` and the second element is `obj2`, which
@@ -93,6 +100,15 @@ Create a new function named `var` with one or more named formal parameters, an e
 formal parameter, and the body `body`.  All extra arguments are converted into a list and
 passed as the last parameter.  names may not be reused in a single definition.
 
+`(define-condition-type ty superty constr pred)`
+
+Create a new condition type of the given `ty`.  This does not create a new object instance of
+that type.  The new condition must inherit from some other already existing condition type as
+given by `superty`.  For many new conditions, `base-error` will suffice as their super type.
+`constr` is a name that should be given to a function that will construct instances of this
+type, and `pred` is a name that should be given to a function that will determine whether an
+object is an instance of this type.
+
 `(div x y)`
 
 Returns the integer division result of `x/y`.  `y` must not be zero.
@@ -114,6 +130,15 @@ Apply `func` to each element of `list` until it returns `#f`.  If the list is em
 elements match, return `#t`.  Otherwise return `#f`.  **NOTE:** This function differs from
 standard scheme.  It only supports one list.  This may be fixed.  It also does not support
 returning the matching value.  This may not be fixed.
+
+`(guard (var (test1 expr1) ... (testN exprN) [(else expr)]) body)`
+
+The guard expression is used for handling exceptional conditions.  The `body` is evaluated.  If
+no exception is raised, guard does nothing else and returns the result of the evaluation.  If
+an exception is raised, the condition object is bound to `var`.  Each `test` expression is then
+evaluated in this environment until one returns `#t`.  When that happens, return the matching
+`expr`.  If no `test` passes, return the else `expr` if it exists.  If there is no else
+expression, the exception is re-raised.
 
 `(if pred true-expr false-expr)`
 
@@ -192,6 +217,13 @@ library, a user-defined procedure, or a lambda - and otherwise returns `#f`.
 `(quote obj)`
 
 Returns `obj` without evaluating it.
+
+`(raise obj)`
+
+Raise the exception object given by `obj`.  This object must have been previously created with
+one of the `make-\*-error` functions.  When an exception is raised, it will propagate all the
+way up to the top level where it will cause the interpreter to stop, unless it is handled with
+a `guard` expression.
 
 `(reverse list)`
 

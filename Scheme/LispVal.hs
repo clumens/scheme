@@ -2,10 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Scheme.LispVal(EnvCtx,
-                      Eval(..),
+module Scheme.LispVal(Eval(..),
                       LispVal(..),
                       IFunc(..),
+                      SchemeSt(..),
+                      mkEmptyState,
                       showVal,
                       typeOf,
                       unwordsList)
@@ -13,21 +14,30 @@ module Scheme.LispVal(EnvCtx,
 
 import           Control.Monad.IO.Class(MonadIO)
 import           Control.Monad.State(MonadState, StateT)
-import qualified Data.Map as Map
 import qualified Data.Text as T
 import           Data.Typeable(Typeable)
 
-type EnvCtx = Map.Map T.Text LispVal
+import Scheme.Environment(Environment(..), mkEnvironment)
+import Scheme.Types(SchemeTy(..))
 
-newtype Eval a = Eval { unEval :: StateT EnvCtx IO a }
-  deriving (Applicative, Functor, Monad, MonadIO, MonadState EnvCtx)
+-- Program state consists of two mappings: An environment storing bindings and
+-- an environment storing new types.
+data SchemeSt = SchemeSt { stBindings :: Environment LispVal,
+                           stTypes :: Environment SchemeTy }
+ deriving(Eq, Show)
+
+mkEmptyState :: SchemeSt
+mkEmptyState = SchemeSt { stBindings=mkEnvironment [],
+                          stTypes=mkEnvironment [] }
+
+newtype Eval a = Eval { unEval :: StateT SchemeSt IO a }
+  deriving (Applicative, Functor, Monad, MonadIO, MonadState SchemeSt)
 
 data LispVal = Atom T.Text
              | Bool Bool
              | Character Char
              | Error T.Text T.Text
-             | ErrorType (Maybe T.Text)
-             | Func IFunc (Maybe EnvCtx)
+             | Func IFunc (Maybe SchemeSt)
              | List [LispVal]
              | Nil
              | Number Integer
@@ -50,7 +60,6 @@ showVal val = case val of
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
     Error ty msg    -> T.concat ["Error (", ty, "):\n", msg]
-    ErrorType _     -> "(error type)"
     Func _ _        -> "(function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]
     Nil             -> "Nil"
@@ -63,7 +72,6 @@ typeOf val = case val of
     Bool _      -> "Bool"
     Character _ -> "Character"
     Error _ _   -> "Error"
-    ErrorType _ -> "ErrorType"
     List _      -> "List"
     Nil         -> "Nil"
     Number _    -> "Number"

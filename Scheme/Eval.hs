@@ -3,21 +3,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Scheme.Eval(basicEnv,
+module Scheme.Eval(initialState,
                    evalText,
                    evalFile,
                    runParseTest)
  where
 
+import Scheme.Environment
 import Scheme.Exceptions
-import Scheme.LispVal(Eval(..), EnvCtx, IFunc(..), LispVal(..), showVal)
+import Scheme.LispVal(Eval(..), IFunc(..), LispVal(..), SchemeSt(..), mkEmptyState, showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
+import Scheme.Types(SchemeTy(..))
 
 import           Control.Monad.State(MonadState, get, modify, put, runStateT)
 import           Data.List(nub)
 import qualified Data.Text as T
-import qualified Data.Map as Map
 import           Data.Monoid((<>))
 
 --
@@ -26,41 +27,46 @@ import           Data.Monoid((<>))
 -- Oh well.
 --
 
--- The basic environment consists of the primitive environment (those functions that have to
--- be implemented in Haskell), plus this special "read" function, which is basically eval.
--- Do I even want that here?
-basicEnv :: EnvCtx
-basicEnv = Map.fromList $ primEnv
-          <> [("read", Func (IFunc $ unop readFn) Nothing)]
-          <> errorEnvironment
+-- The initial program state consists of two parts:
+-- (1) The primitive bindings environment (those functions that have to be implemented in
+-- Haskell), plus the special "read" function, which is basically eval, defined here.
+-- (2) The type environment, which for now just holds error types.
+--
+-- FIXME:  Without "read", this could live in LispVal.hs instead.  That would be a nicer
+-- place for it.
+initialState :: SchemeSt
+initialState = mkEmptyState { stBindings=mkEnvironment $ primEnv
+                                         <> [("read", Func (IFunc $ unop readFn) Nothing)]
+                                         <> errorEnvironment,
+                              stTypes=mkEnvironment errorTypeEnvironment }
 
--- Temporarily augment the environment with a set of new bindings (which take precedence over
--- whatever was in the environment before), and execute fn in that environment.  Then restore
+-- Temporarily augment the bindings environment with a set of new bindings (which take precedence
+-- over whatever was in the environment before), and execute fn in that environment.  Then restore
 -- the environment.
-augmentEnv :: MonadState EnvCtx m => [(T.Text, LispVal)] -> m b -> m b
-augmentEnv newBindings fn = do
-    oldEnv <- get
-    modify (Map.union (Map.fromList newBindings))
+withAugmentedEnv :: MonadState SchemeSt m => [(T.Text, LispVal)] -> m b -> m b
+withAugmentedEnv newBindings fn = do
+    oldState <- get
+    modify (\st -> st { stBindings=addToEnvironment newBindings (stBindings st) })
     result <- fn
-    put oldEnv
+    put oldState
     return result
 
--- Temporarily replace the environment with a new one, and execute fn in that environment.  Then
--- restore the old environment.  This is useful for lambdas, which have their execution environment
--- packed up at definition time.
-replaceEnv :: MonadState s m => s -> m b -> m b
-replaceEnv newEnv fn = do
-    oldEnv <- get
+-- Temporarily replace the bindings environment with a new one, and execute fn in that environment.
+-- Then, restore the old environment.  This is useful for lambdas, which have their execution
+-- environment packed up at definition time.
+withReplacedEnv :: MonadState s m => s -> m b -> m b
+withReplacedEnv newEnv fn = do
+    oldState <- get
     put newEnv
     result <- fn
-    put oldEnv
+    put oldState
     return result
 
 -- Look up a name in the environment and return its LispVal.
 getVar :: LispVal ->  Eval LispVal
 getVar (Atom atom) = do
-    env <- get
-    case Map.lookup atom env of
+    env <- stBindings <$> get
+    case environmentLookup atom env of
         Just x  -> return x
         Nothing -> return $ Error "unbound-error" (unboundErrorMessage atom)
 getVar n = return $ Error "type-error" (typeErrorMessage "Atom" n)
@@ -78,30 +84,30 @@ readFn x = eval x >>= \case
     val        -> return $ Error "type-error" (typeErrorMessage "String" val)
 
 -- Force the evaluation of some scheme by running the StateT monad.  Return any return value given by the
--- evaluation as well as the new environment.  This environment can in turn be fed back into the next
--- run of the REPL, allowing building up the environment with more bindings.
-runASTinEnv :: EnvCtx -> Eval b -> IO (b, EnvCtx)
-runASTinEnv code action = runStateT (unEval action) code
+-- evaluation as well as the new state.  This state can in turn be fed back into the next run of the
+-- REPL, allowing building up more bindings.
+runASTinEnv :: SchemeSt -> Eval b -> IO (b, SchemeSt)
+runASTinEnv state action = runStateT (unEval action) state
 
 runParseTest :: T.Text -> T.Text
 runParseTest input = either (T.pack . show) showVal $ readExpr input
 
--- Evaluate a single input expression against the given environment, returning the value and the new
--- environment.  We always return a value because it could be an Error.
-evalText :: EnvCtx -> T.Text -> IO (LispVal, EnvCtx)
-evalText env textExpr =
-    runASTinEnv env $ textToEvalForm textExpr
+-- Evaluate a single input expression against the given state, returning the value and the new state.
+-- We always return a value because it could be an Error.
+evalText :: SchemeSt -> T.Text -> IO (LispVal, SchemeSt)
+evalText state textExpr =
+    runASTinEnv state $ textToEvalForm textExpr
 
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
 -- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function).
 textToEvalForm :: T.Text -> Eval LispVal
 textToEvalForm input = either (\err -> return $ Error "parse-error" (parseErrorMessage $ T.pack $ show err)) eval $ readExpr input
 
--- Evaluate several input expressions against the given environment, returning the value and the new
--- environment.  We always return a value because it could be an error.
-evalFile :: EnvCtx -> T.Text -> IO (LispVal, EnvCtx)
-evalFile env fileExpr =
-    runASTinEnv env $ fileToEvalForm fileExpr
+-- Evaluate several input expressions against the given state , returning the value and the new state
+-- We always return a value because it could be an error.
+evalFile :: SchemeSt -> T.Text -> IO (LispVal, SchemeSt)
+evalFile state fileExpr =
+    runASTinEnv state $ fileToEvalForm fileExpr
 
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
 -- this function split out could be handy elsewhere, though that's not happening right now.
@@ -117,7 +123,7 @@ fileToEvalForm input = either (\err -> return $ Error "parse-error" (parseErrorM
 -- the named parameters, add those bindings to the environment, and then execute the body of the function.
 applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
 applyLambda expr params args =
-    augmentEnv (zipWith (\a b -> (extractVar a, b)) params args) $
+    withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) params args) $
         eval expr
 
 -- Check that a LispVal is an Atom, raising an exception if this is not the case.  This is used in various places
@@ -186,7 +192,7 @@ eval (List (Atom "apply":Atom proc:args)) =
         Right (reverse -> (List extra):xs)  -> do let realArgs = xs ++ extra
                                                   eval (Atom proc) >>= \case
                                                       Func (IFunc fn) Nothing       -> fn realArgs
-                                                      Func (IFunc fn) (Just bound)  -> replaceEnv bound (fn realArgs)
+                                                      Func (IFunc fn) (Just bound)  -> withReplacedEnv bound (fn realArgs)
                                                       e                             -> return $ Error "type-error" (typeErrorMessage "Function" e)
         Right (reverse -> x:_)              -> return $ Error "type-error" (typeErrorMessage "List" x)
         Right _                             -> return $ Error "syntax-error" (syntaxErrorMessage "(apply <proc> <arg1> ... <argN>)")
@@ -241,7 +247,7 @@ eval (List (Atom "begin":rest))  = evalBody $ List rest
 eval (List [Atom "define", varAtom@(Atom _), expr]) =
     eval expr >>= \case
         err@(Error _ _) -> return err
-        evalVal         -> do modify (Map.insert (extractVar varAtom) evalVal)
+        evalVal         -> do modify (\st -> st { stBindings=addToEnvironment [(extractVar varAtom, evalVal)] (stBindings st) })
                               return varAtom
 
 -- Define a function with a list of parameters (the first of which is the name of the function) and a body.
@@ -264,7 +270,7 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
         if nub params' /= params' then return $ Error "syntax-error" (syntaxErrorMessage "duplicate names given in formal parameters list")
         else do
             let fn = Func (IFunc $ applyLambda expr params') Nothing
-            modify (Map.insert name' fn)
+            modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
             return (Atom name')
 
     evalSpecialFunc name' params' extra = do
@@ -281,7 +287,7 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
                                             in  applyLambda expr (params' ++ [Atom extra])
                                                                  (matched ++ [List rest]))
                           Nothing
-            modify (Map.insert name' fn)
+            modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
             return (Atom name')
 
 -- Define a new error condition type.  The condition must be a subclass of some other
@@ -292,26 +298,26 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
 -- Example: (define-condition-type big-error base-error make-big-error big-error?)
 eval (List [Atom "define-condition-type", Atom ty, Atom superTy, Atom constr, Atom predicate]) = do
     -- Verify superTy exists in the environment before doing anything else.
-    env <- get
-    case Map.lookup superTy env of
-        Just (ErrorType _) -> do
+    env <- stTypes <$> get
+    case environmentLookup superTy env of
+        Just (Condition _) -> do
             -- The constructor is a function that takes a single argument (the error string) and returns
             -- a new Error value containing that argument.  We have to pack up the type of the error as
             -- well, so other functions can operate on it.  This will not be exposed to the user (except
             -- indirectly, through the predicate functions).
             let constrFn = Func (IFunc $ \args -> return $ errorConstrFn ty args) Nothing
-            modify (Map.insert constr constrFn)
+            modify (\st -> st { stBindings=addToEnvironment [(constr, constrFn)] (stBindings st) })
 
             -- The predicate is a function that takes a single argument (a condition object) and returns
             -- a boolean indicating whether that object is of this condition's type or any of its supertypes.
             let predFn = Func (IFunc $ \args -> return $ errorPredFn ty args) Nothing
-            modify (Map.insert predicate predFn)
+            modify (\st -> st { stBindings=addToEnvironment [(predicate, predFn)] (stBindings st) })
 
             -- Add the condition type to the environment.  Note that while conditions take an optional supertype,
             -- the optional part is only so a base condition can be defined in the primitive environment.  No
             -- user-defined condition can ever exist without a supertype.  We enforce that here with pattern
             -- matching on the define-condition-type call.
-            modify (Map.insert ty (ErrorType $ Just superTy))
+            modify (\st -> st { stTypes=addToEnvironment [(ty, Condition $ Just superTy)] (stTypes st) })
             return (Atom ty)
 
         _ -> return $ Error "syntax-error" (syntaxErrorMessage $ T.concat [superTy, " is not a valid condition type"])
@@ -326,7 +332,7 @@ eval (List [Atom "guard", List (Atom var:clauses), body]) = eval body >>= \case
     -- If evaluating the body raised an error, put the error object into the
     -- environment with the name given by the guard and start evaluating clauses
     -- until one matches.
-    err@(Error _ _) -> augmentEnv [(var, err)] $
+    err@(Error _ _) -> withAugmentedEnv [(var, err)] $
                            tryOne err clauses
     -- No error was encountered, so just return the value of the body.
     val             -> return val
@@ -359,7 +365,7 @@ eval (List [Atom "let", List pairs, expr]) = do
     else mapEval (getVals pairs) >>= \case
         Left (err@(Error _ _))  -> return err
         Left x                  -> mkMapEvalError x
-        Right vals              -> augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
+        Right vals              -> withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
                                        evalBody expr
 
 -- Named let allows you do give a name to the body of the let, and then refer to this name within the body.
@@ -384,7 +390,7 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
             let fn      = Func (IFunc $ applyLambda expr atoms) Nothing
             let vals'   = fn : vals
 
-            augmentEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
+            withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) atoms' vals') $
                 evalBody expr
 eval (List (Atom "let":_)) = return $ Error "syntax-error" (syntaxErrorMessage "(let <pair1> ... <pairN> <body>)")
 
@@ -412,7 +418,7 @@ eval (List (x:xs)) = eval x >>= \case
     Func (IFunc fn) (Just bound)    -> do mapEval xs >>= \case
                                               Left (err@(Error _ _))    -> return err
                                               Left e                    -> mkMapEvalError e
-                                              Right xVal                -> replaceEnv bound (fn xVal)
+                                              Right xVal                -> withReplacedEnv bound (fn xVal)
     _                               -> return $ Error "type-error" (typeErrorMessage "Function" x)
 
 -- If we made it all the way down here and couldn't figure out what sort of thing we're dealing with,
@@ -432,7 +438,7 @@ evalBody :: LispVal -> Eval LispVal
 evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) =
     eval defExpr >>= \case
         err@(Error _ _) -> return err
-        evalVal         -> do modify (Map.insert var evalVal)
+        evalVal         -> do modify (\st -> st { stBindings=addToEnvironment [(var, evalVal)] (stBindings st) })
                               eval rest
 
 -- Define a value, like so: (define x 1).
@@ -440,7 +446,7 @@ evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) =
 evalBody (List (List (Atom "define":[Atom var, defExpr]):rest)) =
     eval defExpr >>= \case
         err@(Error _ _) -> return err
-        evalVal         -> do modify (Map.insert var evalVal)
+        evalVal         -> do modify (\st -> st { stBindings=addToEnvironment [(var, evalVal)] (stBindings st) })
                               evalBody $ List rest
 
 -- Define a function, like so: (define (add x y) (+ x y))

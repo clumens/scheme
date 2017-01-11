@@ -5,6 +5,7 @@
 module Scheme.Exceptions(catchHaskellExceptions,
                          defaultExceptionHandler,
                          errorEnvironment,
+                         errorTypeEnvironment,
                          errorConstrFn,
                          errorPredFn,
                          divByZeroMessage,
@@ -18,28 +19,31 @@ module Scheme.Exceptions(catchHaskellExceptions,
                          undefinedErrorMessage)
  where
 
-import Scheme.LispVal(EnvCtx, IFunc(..), LispVal(..), unwordsList, showVal, typeOf)
+import Scheme.LispVal(IFunc(..), LispVal(..), SchemeSt(..), mkEmptyState, unwordsList, showVal, typeOf)
+import Scheme.Types(SchemeTy(..))
 
 import           Control.Exception(SomeException, try)
-import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import           System.Exit(exitFailure)
 import           System.IO(stderr)
 
+errorTypeEnvironment :: [(T.Text, SchemeTy)]
+errorTypeEnvironment = [
+    -- Error types.
+    ("base-error",              Condition Nothing),
+    ("internal-error",          Condition Nothing),
+    ("div-by-zero-error",       Condition $ Just "base-error"),
+    ("io-error",                Condition $ Just "base-error"),
+    ("syntax-error",            Condition $ Just "base-error"),
+    ("parse-error",             Condition $ Just "syntax-error"),
+    ("type-error",              Condition $ Just "base-error"),
+    ("unbound-error",           Condition $ Just "base-error"),
+    ("undefined-error",         Condition $ Just "base-error")
+ ]
+
 errorEnvironment :: [(T.Text, LispVal)]
 errorEnvironment = [
-    -- Error types.
-    ("base-error",              ErrorType Nothing),
-    ("internal-error",          ErrorType Nothing),
-    ("div-by-zero-error",       ErrorType $ Just "base-error"),
-    ("io-error",                ErrorType $ Just "base-error"),
-    ("syntax-error",            ErrorType $ Just "base-error"),
-    ("parse-error",             ErrorType $ Just "syntax-error"),
-    ("type-error",              ErrorType $ Just "base-error"),
-    ("unbound-error",           ErrorType $ Just "base-error"),
-    ("undefined-error",         ErrorType $ Just "base-error"),
-
     -- Error making functions.
     ("make-div-by-zero-error",  Func (IFunc $ \args -> return $ errorConstrFn "div-by-zero-error" args) Nothing),
     ("make-io-error",           Func (IFunc $ \args -> return $ errorConstrFn "io-error" args) Nothing),
@@ -62,12 +66,12 @@ errorEnvironment = [
 -- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
 -- called exceptions) and convert them into a LispVal Error.  This can then be handled like any
 -- exception that occurred in scheme.
-catchHaskellExceptions :: IO (LispVal, EnvCtx) -> IO (LispVal, EnvCtx)
+catchHaskellExceptions :: IO (LispVal, SchemeSt) -> IO (LispVal, SchemeSt)
 catchHaskellExceptions m = try m >>= \case
     -- It seems odd that we're returning an empty environment here.  However, internal errors are
     -- bad and we can't recover from them.  The default exception handler will cause the
     -- interpreter to shut down so it doesn't really matter what environment we return.
-    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), Map.empty)
+    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), mkEmptyState)
     Right val                   -> return val
 
 -- This is the top-level exception handler.  It handles all exceptions that do not get

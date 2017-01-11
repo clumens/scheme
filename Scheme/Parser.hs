@@ -51,8 +51,16 @@ parseText = String . T.pack <$> Tok.stringLiteral lexer
 parseNumber :: Parser LispVal
 parseNumber = Number <$> Tok.integer lexer
 
+sign :: Parser (Double -> Double)
+sign =  (char '-' >> return negate)
+    <|> (char '+' >> return id)
+    <|> return id
+
 parseFloat :: Parser LispVal
-parseFloat = Float <$> Tok.float lexer
+parseFloat = do
+    f <- sign
+    n <- Tok.float lexer
+    return $ Float (f n)
 
 parseList :: Parser LispVal
 parseList = List . concat <$> many parseExpr `sepBy` (char ' ' <|> char '\n')

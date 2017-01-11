@@ -7,7 +7,7 @@ module Scheme.Repl(mainLoop)
 import Scheme.Environment(environmentWords)
 import Scheme.Eval(evalText)
 import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
-import Scheme.LispVal(LispVal(Error), SchemeSt(..), showVal)
+import Scheme.LispVal(LispVal(Condition), SchemeSt(..), showVal)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)
@@ -51,7 +51,7 @@ process :: SchemeSt-> String -> IO SchemeSt
 process state str = do
     (ret, state') <- catchHaskellExceptions $ evalText state $ T.pack str
     case ret of
-        Error _ _   -> defaultExceptionHandler ret
-        result      -> TIO.putStrLn $ showVal result
+        Condition _ _ -> defaultExceptionHandler ret
+        result        -> TIO.putStrLn $ showVal result
 
     return state'

@@ -31,15 +31,15 @@ import           System.IO(stderr)
 errorTypeEnvironment :: [(T.Text, SchemeTy)]
 errorTypeEnvironment = [
     -- Error types.
-    ("base-error",              Condition Nothing),
-    ("internal-error",          Condition Nothing),
-    ("div-by-zero-error",       Condition $ Just "base-error"),
-    ("io-error",                Condition $ Just "base-error"),
-    ("syntax-error",            Condition $ Just "base-error"),
-    ("parse-error",             Condition $ Just "syntax-error"),
-    ("type-error",              Condition $ Just "base-error"),
-    ("unbound-error",           Condition $ Just "base-error"),
-    ("undefined-error",         Condition $ Just "base-error")
+    ("base-error",              CondTy Nothing),
+    ("internal-error",          CondTy Nothing),
+    ("div-by-zero-error",       CondTy $ Just "base-error"),
+    ("io-error",                CondTy $ Just "base-error"),
+    ("syntax-error",            CondTy $ Just "base-error"),
+    ("parse-error",             CondTy $ Just "syntax-error"),
+    ("type-error",              CondTy $ Just "base-error"),
+    ("unbound-error",           CondTy $ Just "base-error"),
+    ("undefined-error",         CondTy $ Just "base-error")
  ]
 
 errorEnvironment :: [(T.Text, LispVal)]
@@ -71,7 +71,7 @@ catchHaskellExceptions m = try m >>= \case
     -- It seems odd that we're returning an empty environment here.  However, internal errors are
     -- bad and we can't recover from them.  The default exception handler will cause the
     -- interpreter to shut down so it doesn't really matter what environment we return.
-    Left (exn :: SomeException) -> return (Error "internal-error" (internalErrorMessage $ T.pack $ show exn), mkEmptyState)
+    Left (exn :: SomeException) -> return (Raised "internal-error" (internalErrorMessage $ T.pack $ show exn), mkEmptyState)
     Right val                   -> return val
 
 -- This is the top-level exception handler.  It handles all exceptions that do not get
@@ -86,55 +86,55 @@ catchHaskellExceptions m = try m >>= \case
 -- Other errors are less bad.  In the REPL case, these errors get printed out and the
 -- user returned to the prompt.
 defaultExceptionHandler :: LispVal -> IO ()
-defaultExceptionHandler (Error "internal-error" msg) = do
+defaultExceptionHandler (Raised "internal-error" msg) = do
     TIO.hPutStrLn stderr msg
     exitFailure
-defaultExceptionHandler (Error ty msg) =
+defaultExceptionHandler (Raised ty msg) =
     TIO.hPutStrLn stderr $ T.concat ["Error: (", ty, "):\n", msg]
 defaultExceptionHandler _ = return ()
 
 errorConstrFn :: T.Text -> [LispVal] -> LispVal
 -- div-by-zero-error takes no arguments.
-errorConstrFn "div-by-zero-error" []    = Error "div-by-zero-error" divByZeroMessage
-errorConstrFn "div-by-zero-error" x     = Error "syntax-error" (numArgsMessage 0 x)
+errorConstrFn "div-by-zero-error" []    = Condition "div-by-zero-error" divByZeroMessage
+errorConstrFn "div-by-zero-error" x     = Condition "syntax-error" (numArgsMessage 0 x)
 -- io-error takes one argument: A message
-errorConstrFn "io-error" [String msg]   = Error "io-error" (ioErrorMessage msg)
-errorConstrFn "io-error" [x]            = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "io-error" x              = Error "syntax-error" (numArgsMessage 1 x)
+errorConstrFn "io-error" [String msg]   = Condition "io-error" (ioErrorMessage msg)
+errorConstrFn "io-error" [x]            = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "io-error" x              = Condition "syntax-error" (numArgsMessage 1 x)
 -- syntax-error takes one argument: A message
 -- FIXME: Maybe it should take two, the other being the expression
-errorConstrFn "syntax-error" [String msg]   = Error "syntax-error" (syntaxErrorMessage msg)
-errorConstrFn "syntax-error" [x]            = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "syntax-error" x              = Error "syntax-error" (numArgsMessage 1 x)
+errorConstrFn "syntax-error" [String msg]   = Condition "syntax-error" (syntaxErrorMessage msg)
+errorConstrFn "syntax-error" [x]            = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "syntax-error" x              = Condition "syntax-error" (numArgsMessage 1 x)
 -- parse-error takes one argument: A message
-errorConstrFn "parse-error" [String msg]    = Error "parse-error" (parseErrorMessage msg)
-errorConstrFn "parse-error" [x]             = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "parse-error" x               = Error "syntax-error" (numArgsMessage 1 x)
+errorConstrFn "parse-error" [String msg]    = Condition "parse-error" (parseErrorMessage msg)
+errorConstrFn "parse-error" [x]             = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "parse-error" x               = Condition "syntax-error" (numArgsMessage 1 x)
 -- type-error takes two arguments: The expected type, and the actual value that had an error.
-errorConstrFn "type-error" [String expected, x] = Error "type-error" (typeErrorMessage expected x)
-errorConstrFn "type-error" [x, _]               = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "type-error" x                    = Error "syntax-error" (numArgsMessage 2 x)
+errorConstrFn "type-error" [String expected, x] = Condition "type-error" (typeErrorMessage expected x)
+errorConstrFn "type-error" [x, _]               = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "type-error" x                    = Condition "syntax-error" (numArgsMessage 2 x)
 -- unbound-error takes one argument: A message
-errorConstrFn "unbound-error" [String msg]  = Error "unbound-error" (unboundErrorMessage msg)
-errorConstrFn "unbound-error" [x]           = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "unbound-error" x             = Error "syntax-error" (numArgsMessage 2 x)
+errorConstrFn "unbound-error" [String msg]  = Condition "unbound-error" (unboundErrorMessage msg)
+errorConstrFn "unbound-error" [x]           = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "unbound-error" x             = Condition "syntax-error" (numArgsMessage 2 x)
 -- undefined-error takes one argument: A message
-errorConstrFn "undefined-error" [String msg]    = Error "undefined-error" (undefinedErrorMessage msg)
-errorConstrFn "undefined-error" [x]             = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn "undefined-error" x               = Error "syntax-error" (numArgsMessage 2 x)
+errorConstrFn "undefined-error" [String msg]    = Condition "undefined-error" (undefinedErrorMessage msg)
+errorConstrFn "undefined-error" [x]             = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "undefined-error" x               = Condition "syntax-error" (numArgsMessage 2 x)
 -- You can't create a base-error or internal-error via scheme, so getting here with
 -- one of those is an error.
-errorConstrFn "base-error"      _   = Error "syntax-error" (syntaxErrorMessage "Directly creating a base-error is not allowed")
-errorConstrFn "internal-error"  _   = Error "internal-error" (syntaxErrorMessage "Directly creating an internal-error is not allowed")
+errorConstrFn "base-error"      _   = Condition "syntax-error" (syntaxErrorMessage "Directly creating a base-error is not allowed")
+errorConstrFn "internal-error"  _   = Condition "internal-error" (syntaxErrorMessage "Directly creating an internal-error is not allowed")
 -- Any other value is a user-created error.  Those can only take one argument (for now).
-errorConstrFn t [String msg]    = Error t (T.concat ["\t", msg])
-errorConstrFn _ [x]             = Error "type-error" (typeErrorMessage "String" x)
-errorConstrFn _ x               = Error "syntax-error" (numArgsMessage 1 x)
+errorConstrFn t [String msg]    = Condition t (T.concat ["\t", msg])
+errorConstrFn _ [x]             = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn _ x               = Condition "syntax-error" (numArgsMessage 1 x)
 
 errorPredFn :: T.Text -> [LispVal] -> LispVal
-errorPredFn t [Error ty _]      = Bool $ t == ty
-errorPredFn _ [x]               = Error "type-error" (typeErrorMessage "Error" x)
-errorPredFn _ x                 = Error "syntax-error" (numArgsMessage 1 x)
+errorPredFn t [Condition ty _]  = Bool $ t == ty
+errorPredFn _ [x]               = Raised "type-error" (typeErrorMessage "Error" x)
+errorPredFn _ x                 = Raised "syntax-error" (numArgsMessage 1 x)
 
 -- The following functions format an error message to be put into an exception
 -- object.  Some of them don't do anything other than just return the provided

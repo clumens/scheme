@@ -5,7 +5,7 @@ import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
 import           System.Environment(getArgs)
 
-import Scheme.Eval(basicEnv, evalFile, evalText)
+import Scheme.Eval(evalFile, evalText, initialState)
 import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
 import Scheme.Repl(mainLoop)
 
@@ -14,8 +14,8 @@ main = do
     args <- getArgs
 
     -- Read in the standard library.
-    contents <- TIO.readFile "library.scm"
-    (val, env) <- evalFile basicEnv contents
+    contents     <- TIO.readFile "library.scm"
+    (val, state) <- evalFile initialState contents
     -- We only care about val here because it could be an error.  If it is, this
     -- will cause it to be handled correctly.  If it's not an error, this call will
     -- do nothing so it's safe call regardless.
@@ -27,7 +27,7 @@ main = do
     if not (null args)
     then mapM_ (\arg -> whenM (doesFileExist arg) $ do
                             s        <- TIO.readFile arg
-                            (ret, _) <- catchHaskellExceptions $ evalText env s
+                            (ret, _) <- catchHaskellExceptions $ evalText state s
                             defaultExceptionHandler ret)
                args
-    else mainLoop env
+    else mainLoop state

@@ -36,11 +36,12 @@ newtype Eval a = Eval { unEval :: StateT SchemeSt IO a }
 data LispVal = Atom T.Text
              | Bool Bool
              | Character Char
-             | Error T.Text T.Text
+             | Condition T.Text T.Text
              | Func IFunc (Maybe SchemeSt)
              | List [LispVal]
              | Nil
              | Number Integer
+             | Raised T.Text T.Text
              | String T.Text
  deriving (Eq, Show, Typeable)
 
@@ -59,24 +60,25 @@ showVal val = case val of
     Bool True       -> "#t"
     Bool False      -> "#f"
     Character ch    -> T.singleton ch
-    Error ty msg    -> T.concat ["Error (", ty, "):\n", msg]
+    Condition ty _  -> T.concat ["(", ty, ")"]
     Func _ _        -> "(function)"
     List contents   -> T.concat ["(", unwordsList contents, ")"]
     Nil             -> "Nil"
     Number num      -> T.pack $ show num
+    Raised ty msg   -> T.concat ["Error (", ty, "):\n", msg]
     String txt      -> T.concat [ "\"" , txt, "\""]
 
 typeOf :: LispVal -> T.Text
 typeOf val = case val of
-    Atom _      -> "Atom"
-    Bool _      -> "Bool"
-    Character _ -> "Character"
-    Error _ _   -> "Error"
-    List _      -> "List"
-    Nil         -> "Nil"
-    Number _    -> "Number"
-    String _    -> "String"
-    _           -> "Function"
+    Atom _          -> "Atom"
+    Bool _          -> "Bool"
+    Character _     -> "Character"
+    Condition _ _   -> "Condition"
+    List _          -> "List"
+    Nil             -> "Nil"
+    Number _        -> "Number"
+    String _        -> "String"
+    _               -> "Function"
 
 unwordsList :: [LispVal] -> T.Text
 unwordsList list = T.unwords $ showVal <$> list

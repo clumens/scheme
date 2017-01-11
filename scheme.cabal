@@ -8,12 +8,14 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Scheme.Eval,
+  exposed-modules:     Scheme.Environment,
+                       Scheme.Eval,
                        Scheme.Exceptions,
                        Scheme.LispVal,
                        Scheme.Parser,
                        Scheme.Prim,
-                       Scheme.Repl
+                       Scheme.Repl,
+                       Scheme.Types
 
   build-depends:       base >=4.9 && <4.10,
                        cond,

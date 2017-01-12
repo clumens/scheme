@@ -6,7 +6,7 @@ module Scheme.Prim(primEnv,
  where
 
 import Scheme.Exceptions
-import Scheme.LispVal(Eval(..), IFunc(IFunc), LispVal(..), showVal)
+import Scheme.Values(Eval(..), IFunc(IFunc), Value(..), showVal)
 
 import           Control.Monad(foldM)
 import           Control.Monad.IO.Class(liftIO)
@@ -16,9 +16,9 @@ import qualified Data.Text.IO as TIO
 import           System.Directory(doesFileExist)
 import           System.IO(Handle, IOMode(..), withFile)
 
-type Prim   = [(T.Text, LispVal)]
-type Unary  = LispVal -> Eval LispVal
-type Binary = LispVal -> LispVal -> Eval LispVal
+type Prim   = [(T.Text, Value)]
+type Unary  = Value -> Eval Value
+type Binary = Value -> Value -> Eval Value
 
 --
 -- THE PRIMITIVE ENVIRONMENT
@@ -108,18 +108,18 @@ primEnv = [ -- Basic math.
 -- HELPERS
 --
 
-mkF :: ([LispVal] -> Eval LispVal) -> LispVal
+mkF :: ([Value] -> Eval Value) -> Value
 mkF fn = Func (IFunc fn) Nothing
 
-unop :: Unary -> [LispVal] -> Eval LispVal
+unop :: Unary -> [Value] -> Eval Value
 unop op [x]     = op x
 unop _ args     = return $ Raised "syntax-error" (numArgsMessage 1 args)
 
-binop :: Binary -> [LispVal] -> Eval LispVal
+binop :: Binary -> [Value] -> Eval Value
 binop op [x,y]  = op x y
 binop _  args   = return $ Raised "syntax-error" (numArgsMessage 1 args)
 
-binopFold :: Binary -> LispVal -> [LispVal] -> Eval LispVal
+binopFold :: Binary -> Value -> [Value] -> Eval Value
 binopFold op _ [a, b]         = op a b
 binopFold op farg args@(_:_)  = foldM op farg args
 binopFold _ _ args@[]         = return $ Raised "syntax-error" (numArgsMessage 2 args)
@@ -128,7 +128,7 @@ binopFold _ _ args@[]         = return $ Raised "syntax-error" (numArgsMessage 2
 -- NUMBERS
 --
 
-intOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
+intOp :: (Integer -> Integer -> Integer) -> Value -> Value -> Eval Value
 intOp _  err@(Raised _ _) _    = return err
 intOp _  _ err@(Raised _ _)    = return err
 intOp _  _          (Number 0) = return $ Raised "div-by-zero-error" divByZeroMessage
@@ -137,7 +137,7 @@ intOp _  x          (Number _) = return $ Raised "type-error" (typeErrorMessage 
 intOp _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage "Number" y)
 intOp _  x          _          = return $ Raised "type-error" (typeErrorMessage "Number" x)
 
-numOp :: (Double -> Double -> Double) -> LispVal -> LispVal -> Eval LispVal
+numOp :: (Double -> Double -> Double) -> Value -> Value -> Eval Value
 numOp _  err@(Raised _ _) _    = return err
 numOp _  _ err@(Raised _ _)    = return err
 numOp op (Number x) (Number y) = return $ Number $ truncate $ fromInteger x `op` fromInteger y
@@ -150,17 +150,17 @@ numOp _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage 
 numOp _  (Float _)  y          = return $ Raised "type-error" (typeErrorMessage "Float" y)
 numOp _  x          _          = return $ Raised "type-error" (typeErrorMessage "Float or Number" x)
 
-numCmp :: (Double -> Double -> Bool) -> [LispVal] -> Eval LispVal
+numCmp :: (Double -> Double -> Bool) -> [Value] -> Eval Value
 numCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessage 2 args)
                | otherwise       = loop fn args
  where
-    loop :: (Double -> Double -> Bool) -> [LispVal] -> Eval LispVal
+    loop :: (Double -> Double -> Bool) -> [Value] -> Eval Value
     loop op (a:b:rest) = cmpOne op a b >>= \case
                              Bool True -> loop op (b:rest)
                              x         -> return x
     loop _  _          = return $ Bool True
 
-    cmpOne :: (Double -> Double -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne :: (Double -> Double -> Bool) -> Value -> Value -> Eval Value
     cmpOne _  err@(Raised _ _) _    = return err
     cmpOne _  _ err@(Raised _ _)    = return err
     cmpOne op (Number x) (Number y) = return $ Bool $ fromInteger x `op` fromInteger y
@@ -177,7 +177,7 @@ numCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessag
 -- EQUIVALENCE
 --
 
-eqOp :: (Bool -> Bool -> Bool) -> LispVal -> LispVal -> Eval LispVal
+eqOp :: (Bool -> Bool -> Bool) -> Value -> Value -> Eval Value
 eqOp _  err@(Raised _ _ ) _ = return err
 eqOp _  _ err@(Raised _ _)  = return err
 eqOp op (Bool x) (Bool y)   = return $ Bool $ op x y
@@ -185,7 +185,7 @@ eqOp _  x        (Bool _)   = return $ Raised "type-error" (typeErrorMessage "Bo
 eqOp _  (Bool _) y          = return $ Raised "type-error" (typeErrorMessage "Bool" y)
 eqOp _  x        _          = return $ Raised "type-error" (typeErrorMessage "Bool" x)
 
-equivalent :: LispVal -> LispVal -> Eval LispVal
+equivalent :: Value -> Value -> Eval Value
 equivalent err@(Raised _ _ ) _              = return err
 equivalent _ err@(Raised _ _ )              = return err
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
@@ -202,37 +202,37 @@ equivalent _          _                     = return $ Bool False
 -- TYPE MANIPULATIONS
 --
 
-isBoolean :: LispVal -> Eval LispVal
+isBoolean :: Value -> Eval Value
 isBoolean err@(Raised _ _ ) = return err
 isBoolean (Bool _)          = return $ Bool True
 isBoolean _                 = return $ Bool False
 
-eqBoolean :: LispVal -> LispVal -> Eval LispVal
+eqBoolean :: Value -> Value -> Eval Value
 eqBoolean = eqOp (==)
 
-isCharacter :: LispVal -> Eval LispVal
+isCharacter :: Value -> Eval Value
 isCharacter err@(Raised _ _) = return err
 isCharacter (Character _)    = return $ Bool True
 isCharacter _                = return $ Bool False
 
-isCondition :: LispVal -> Eval LispVal
+isCondition :: Value -> Eval Value
 isCondition (Condition _ _)  = return $ Bool True
 isCondition _                = return $ Bool False
 
-eqCharacter :: LispVal -> LispVal -> Eval LispVal
+eqCharacter :: Value -> Value -> Eval Value
 eqCharacter x y = charCmp (==) [x, y]
 
-charCmp :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+charCmp :: (Char -> Char -> Bool) -> [Value] -> Eval Value
 charCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessage 2 args)
                 | otherwise       = loop fn args
  where
-    loop :: (Char -> Char -> Bool) -> [LispVal] -> Eval LispVal
+    loop :: (Char -> Char -> Bool) -> [Value] -> Eval Value
     loop op (a:b:rest) = cmpOne op a b >>= \case
                              Bool True  -> loop op (b:rest)
                              x          -> return x
     loop _  _          = return $ Bool True
 
-    cmpOne :: (Char -> Char -> Bool) -> LispVal -> LispVal -> Eval LispVal
+    cmpOne :: (Char -> Char -> Bool) -> Value -> Value -> Eval Value
     cmpOne _  err@(Raised _ _) _            = return err
     cmpOne _  _ err@(Raised _ _)            = return err
     cmpOne op (Character x) (Character y)   = return $ Bool $ x `op` y
@@ -240,36 +240,36 @@ charCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessa
     cmpOne _  (Character _) y               = return $ Raised "type-error" (typeErrorMessage "Char" y)
     cmpOne _  x          _                  = return $ Raised "type-error" (typeErrorMessage "Char" x)
 
-isList :: LispVal -> Eval LispVal
+isList :: Value -> Eval Value
 isList err@(Raised _ _ ) = return err
 isList (List _)          = return $ Bool True
 isList _                 = return $ Bool False
 
-isProcedure :: LispVal -> Eval LispVal
+isProcedure :: Value -> Eval Value
 isProcedure err@(Raised _ _) = return err
 isProcedure (Func _ _)       = return $ Bool True
 isProcedure _                = return $ Bool False
 
-isString :: LispVal -> Eval LispVal
+isString :: Value -> Eval Value
 isString err@(Raised _ _)   = return err
 isString (String _)         = return $ Bool True
 isString _                  = return $ Bool False
 
 -- The most basic - all numeric types pass.
-isNumber :: LispVal -> Eval LispVal
+isNumber :: Value -> Eval Value
 isNumber err@(Raised _ _)   = return err
 isNumber (Float _)          = return $ Bool True
 isNumber (Number _)         = return $ Bool True
 isNumber _                  = return $ Bool False
 
 -- Everything but complex numbers (which we don't support) pass.
-isReal :: LispVal -> Eval LispVal
+isReal :: Value -> Eval Value
 isReal (Float _)  = return $ Bool True
 isReal (Number _) = return $ Bool True
 isReal _          = return $ Bool False
 
 -- Only integers pass.
-isInteger :: LispVal -> Eval LispVal
+isInteger :: Value -> Eval Value
 isInteger (Number _) = return $ Bool True
 isInteger _          = return $ Bool False
 
@@ -277,12 +277,12 @@ isInteger _          = return $ Bool False
 -- CHARACTERS
 --
 
-charToInteger :: LispVal -> Eval LispVal
+charToInteger :: Value -> Eval Value
 charToInteger err@(Raised _ _)  = return err
 charToInteger (Character c)     = return $ Number $ toInteger $ ord c
 charToInteger x                 = return $ Raised "type-error" (typeErrorMessage "Char" x)
 
-integerToChar :: LispVal -> Eval LispVal
+integerToChar :: Value -> Eval Value
 integerToChar err@(Raised _ _)  = return err
 integerToChar (Number n)        = return $ Character $ chr $ fromIntegral n
 integerToChar x                 = return $ Raised "type-error" (typeErrorMessage "Number" x)
@@ -291,7 +291,7 @@ integerToChar x                 = return $ Raised "type-error" (typeErrorMessage
 -- STRINGS
 --
 
-listToString :: LispVal -> LispVal
+listToString :: Value -> Value
 listToString err@(Raised _ _) = err
 listToString (List l) = let
     doit accum []                   = String accum
@@ -302,7 +302,7 @@ listToString (List l) = let
     doit "" l
 listToString x = Raised "type-error" (typeErrorMessage "List" x)
 
-stringToList :: LispVal -> LispVal
+stringToList :: Value -> Value
 stringToList err@(Raised _ _)   = err
 stringToList (String s)         = List $ map Character (T.unpack s)
 stringToList x                  = Raised "type-error" (typeErrorMessage "String" x)
@@ -311,7 +311,7 @@ stringToList x                  = Raised "type-error" (typeErrorMessage "String"
 -- LISTS
 --
 
-append :: LispVal -> LispVal -> Eval LispVal
+append :: Value -> Value -> Eval Value
 append err@(Raised _ _) _ = return err
 append _ err@(Raised _ _) = return err
 append (List x) (List y)  = return $ List $ x ++ y
@@ -319,7 +319,7 @@ append (List _) y         = return $ Raised "type-error" (typeErrorMessage "List
 append x        (List _)  = return $ Raised "type-error" (typeErrorMessage "List" x)
 append x        _         = return $ Raised "type-error" (typeErrorMessage "List" x)
 
-cons :: [LispVal] -> Eval LispVal
+cons :: [Value] -> Eval Value
 cons [err@(Raised _ _), _]  = return err
 cons [x, List yList]        = return $ List $ x:yList
 cons [err@(Raised _ _)]     = return err
@@ -327,7 +327,7 @@ cons [c]                    = return $ List [c]
 cons []                     = return $ List []
 cons x                      = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cons: " : map showVal x)
 
-car :: [LispVal] -> Eval LispVal
+car :: [Value] -> Eval Value
 car [List []]                   = return $ Raised "list-error" (listErrorMessage "car")
 car [List (err@(Raised _ _):_)] = return err
 car [List (x:_)]                = return x
@@ -336,7 +336,7 @@ car [x]                         = return $ Raised "type-error" (typeErrorMessage
 car []                          = return Nil
 car x                           = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in car: " : map showVal x)
 
-cdr :: [LispVal] -> Eval LispVal
+cdr :: [Value] -> Eval Value
 cdr [List (err@(Raised _ _):_)] = return err
 cdr [List (_:xs)]               = return $ List xs
 cdr [List []]                   = return $ Raised "list-error" (listErrorMessage "cdr")
@@ -349,7 +349,7 @@ cdr x                           = return $ Raised "undefined-error" (undefinedEr
 -- QUOTATION
 --
 
-quote :: [LispVal] -> Eval LispVal
+quote :: [Value] -> Eval Value
 quote [List xs]   = return $ List $ Atom "quote" : xs
 quote [xp]        = return $ List $ Atom "quote" : [xp]
 quote x           = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in quote: " : map showVal x)
@@ -358,7 +358,7 @@ quote x           = return $ Raised "undefined-error" (undefinedErrorMessage $ T
 -- ERRORS
 --
 
-raise :: LispVal -> Eval LispVal
+raise :: Value -> Eval Value
 raise (Condition ty msg) = return $ Raised ty msg
 raise err@(Raised _ _)   = return err
 raise x                  = return $ Raised "type-error" (typeErrorMessage "Error" x)
@@ -367,17 +367,17 @@ raise x                  = return $ Raised "type-error" (typeErrorMessage "Error
 -- IO
 --
 
-fileExists :: LispVal  -> Eval LispVal
+fileExists :: Value  -> Eval Value
 fileExists err@(Raised _ _) = return err
 fileExists (Atom atom)      = fileExists $ String atom
 fileExists (String txt)     = Bool <$> liftIO (doesFileExist $ T.unpack txt)
 fileExists val              = return $ Raised "type-error" (typeErrorMessage "String" val)
 
-slurp :: LispVal  -> Eval LispVal
+slurp :: Value  -> Eval Value
 slurp err@(Raised _ _)  = return err
 slurp (String txt)      = liftIO $ withFile (T.unpack txt) ReadMode (readTextFile txt)
 slurp val               = return $ Raised "type-error" (typeErrorMessage "String" val)
 
-readTextFile :: T.Text -> Handle -> IO LispVal
+readTextFile :: T.Text -> Handle -> IO Value
 readTextFile _ handle =
     fmap String (TIO.hGetContents handle)

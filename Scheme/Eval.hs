@@ -11,7 +11,7 @@ module Scheme.Eval(initialState,
 
 import Scheme.Environment
 import Scheme.Exceptions
-import Scheme.LispVal(Eval(..), IFunc(..), LispVal(..), SchemeSt(..), mkEmptyState, showVal)
+import Scheme.Values(Eval(..), IFunc(..), SchemeSt(..), Value(..), mkEmptyState, showVal)
 import Scheme.Parser(readExpr, readExprFile)
 import Scheme.Prim(unop, primEnv)
 import Scheme.Types(SchemeTy(..))
@@ -32,7 +32,7 @@ import           Data.Monoid((<>))
 -- Haskell), plus the special "read" function, which is basically eval, defined here.
 -- (2) The type environment, which for now just holds error types.
 --
--- FIXME:  Without "read", this could live in LispVal.hs instead.  That would be a nicer
+-- FIXME:  Without "read", this could live in Value.hs instead.  That would be a nicer
 -- place for it.
 initialState :: SchemeSt
 initialState = mkEmptyState { stBindings=mkEnvironment $ primEnv
@@ -43,7 +43,7 @@ initialState = mkEmptyState { stBindings=mkEnvironment $ primEnv
 -- Temporarily augment the bindings environment with a set of new bindings (which take precedence
 -- over whatever was in the environment before), and execute fn in that environment.  Then restore
 -- the environment.
-withAugmentedEnv :: MonadState SchemeSt m => [(T.Text, LispVal)] -> m b -> m b
+withAugmentedEnv :: MonadState SchemeSt m => [(T.Text, Value)] -> m b -> m b
 withAugmentedEnv newBindings fn = do
     oldState <- get
     modify (\st -> st { stBindings=addToEnvironment newBindings (stBindings st) })
@@ -62,8 +62,8 @@ withReplacedEnv newEnv fn = do
     put oldState
     return result
 
--- Look up a name in the environment and return its LispVal.
-getVar :: LispVal ->  Eval LispVal
+-- Look up a name in the environment and return its Value.
+getVar :: Value ->  Eval Value
 getVar (Atom atom) = do
     env <- stBindings <$> get
     case environmentLookup atom env of
@@ -75,10 +75,10 @@ getVar n = return $ Raised "type-error" (typeErrorMessage "Atom" n)
 -- Evaluation functions of various types
 --
 
--- Evaluate a LispVal as given by the "read" function and run it through the pipeline as if it were
+-- Evaluate a Value as given by the "read" function and run it through the pipeline as if it were
 -- provided in the REPL.  This lets the user type in a string that would be scheme code and have it
 -- executed in the same environment as everything else.
-readFn :: LispVal -> Eval LispVal
+readFn :: Value -> Eval Value
 readFn x = eval x >>= \case
     String txt -> textToEvalForm txt
     val        -> return $ Raised "type-error" (typeErrorMessage "String" val)
@@ -94,24 +94,24 @@ runParseTest input = either (T.pack . show) showVal $ readExpr input
 
 -- Evaluate a single input expression against the given state, returning the value and the new state.
 -- We always return a value because it could be an Error.
-evalText :: SchemeSt -> T.Text -> IO (LispVal, SchemeSt)
+evalText :: SchemeSt -> T.Text -> IO (Value, SchemeSt)
 evalText state textExpr =
     runASTinEnv state $ textToEvalForm textExpr
 
 -- Called by evalText - parse a single string of input, evaluate it, and display any resulting error message.
 -- Having this function split out could be handy elsewhere (like in readFn, used by the "read" scheme function).
-textToEvalForm :: T.Text -> Eval LispVal
+textToEvalForm :: T.Text -> Eval Value
 textToEvalForm input = either (\err -> return $ Raised "parse-error" (parseErrorMessage $ T.pack $ show err)) eval $ readExpr input
 
 -- Evaluate several input expressions against the given state , returning the value and the new state
 -- We always return a value because it could be an error.
-evalFile :: SchemeSt -> T.Text -> IO (LispVal, SchemeSt)
+evalFile :: SchemeSt -> T.Text -> IO (Value, SchemeSt)
 evalFile state fileExpr =
     runASTinEnv state $ fileToEvalForm fileExpr
 
 -- Called by evalFile - parse a string of input, evaluate it, and display any resulting error message.  Having
 -- this function split out could be handy elsewhere, though that's not happening right now.
-fileToEvalForm :: T.Text -> Eval LispVal
+fileToEvalForm :: T.Text -> Eval Value
 fileToEvalForm input = either (\err -> return $ Raised "parse-error" (parseErrorMessage $ T.pack $ show err)) evalBody $ readExprFile input
 
 --
@@ -121,29 +121,29 @@ fileToEvalForm input = either (\err -> return $ Raised "parse-error" (parseError
 -- Do the execution of a lambda or named user-defined function.  The arguments have already been evaluated in
 -- the function application portion of eval, so don't do that again here.  Bind the evaluated arguments to
 -- the named parameters, add those bindings to the environment, and then execute the body of the function.
-applyLambda :: LispVal -> [LispVal] -> [LispVal] -> Eval LispVal
+applyLambda :: Value -> [Value] -> [Value] -> Eval Value
 applyLambda expr params args =
     withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) params args) $
         eval expr
 
--- Check that a LispVal is an Atom, raising an exception if this is not the case.  This is used in various places
+-- Check that a Value is an Atom, raising an exception if this is not the case.  This is used in various places
 -- to ensure that a name is given for a a variable, function, etc.
-ensureAtom :: LispVal -> Eval LispVal
+ensureAtom :: Value -> Eval Value
 ensureAtom n@(Atom _) = return n
 ensureAtom n          = return $ Raised "type-error" (typeErrorMessage "Atom" n)
 
 -- Extract the name out of an Atom.
-extractVar :: LispVal -> T.Text
+extractVar :: Value -> T.Text
 extractVar (Atom atom) = atom
 
 -- Given a list of (name value) pairs from a let-expression, extract just the names.
-getNames :: [LispVal] -> [LispVal]
+getNames :: [Value] -> [Value]
 getNames (List [x@(Atom _), _]:xs) = x : getNames xs
 getNames []                        = []
 getNames _                         = [Raised "syntax-error" (syntaxErrorMessage "let bindings list malformed")]
 
 -- Given a list of (name value) pairs from a let-expression, extract just the values.
-getVals :: [LispVal] -> [LispVal]
+getVals :: [Value] -> [Value]
 getVals (List [_, x]:xs) = x : getVals xs
 getVals []               = []
 getVals _                = [Raised "syntax-error" (syntaxErrorMessage "let bindings list malformed")]
@@ -151,7 +151,7 @@ getVals _                = [Raised "syntax-error" (syntaxErrorMessage "let bindi
 -- Evaluate a list of expressions (like, the parameters to a function).  If one results in an
 -- error, stop evaluating and return just that error.  If there are no errors, return the results
 -- as a list.
-mapEval :: [LispVal] -> Eval (Either LispVal [LispVal])
+mapEval :: [Value] -> Eval (Either Value [Value])
 mapEval lst = doit [] lst
  where
     doit accum []       = return $ Right accum
@@ -160,8 +160,8 @@ mapEval lst = doit [] lst
         e                -> doit (accum ++ [e]) xs
 
 -- Make an error message for the extremely unlikely case that mapEval ever returns something
--- other than a [LispVal] or an Error.  But it makes -Wall happy.
-mkMapEvalError :: LispVal -> Eval LispVal
+-- other than a [Value] or an Error.  But it makes -Wall happy.
+mkMapEvalError :: Value -> Eval Value
 mkMapEvalError x = return $ Raised "internal-error" (internalErrorMessage $ T.concat ["mapEval returned unexpected value: ", showVal x])
 
 --
@@ -171,7 +171,7 @@ mkMapEvalError x = return $ Raised "internal-error" (internalErrorMessage $ T.co
 --
 
 -- Primitive values - obvious.
-eval :: LispVal -> Eval LispVal
+eval :: Value -> Eval Value
 eval n@(Atom _)         = getVar n
 eval (Bool b)           = return $ Bool b
 eval (Character c)      = return $ Character c
@@ -436,7 +436,7 @@ eval x = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat ["U
 --
 
 -- I have no idea when this form gets used.
-evalBody :: LispVal -> Eval LispVal
+evalBody :: Value -> Eval Value
 evalBody (List [List (Atom "define":[Atom var, defExpr]), rest]) =
     eval defExpr >>= \case
         err@(Raised _ _) -> return err

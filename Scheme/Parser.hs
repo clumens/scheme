@@ -4,7 +4,7 @@ module Scheme.Parser(readExpr,
                      readExprFile)
  where
 
-import Scheme.LispVal(LispVal(..))
+import Scheme.Values(Value(..))
 
 import           Control.Monad(void)
 import           Data.Functor.Identity(Identity)
@@ -33,7 +33,7 @@ style = Lang.emptyDef { Tok.commentStart    = "#|",
 reservedName :: T.Text -> Parser ()
 reservedName name = Tok.reserved lexer $ T.unpack name
 
-parseChar :: Parser LispVal
+parseChar :: Parser Value
 parseChar = do
     -- FIXME:  This needs to support the following:
     --     #\<char name>
@@ -42,13 +42,13 @@ parseChar = do
     c <- anyChar
     return $ Character c
 
-parseAtom :: Parser LispVal
+parseAtom :: Parser Value
 parseAtom = Atom . T.pack <$> Tok.identifier lexer
 
-parseText :: Parser LispVal
+parseText :: Parser Value
 parseText = String . T.pack <$> Tok.stringLiteral lexer
 
-parseNumber :: Parser LispVal
+parseNumber :: Parser Value
 parseNumber = Number <$> Tok.integer lexer
 
 sign :: Parser (Double -> Double)
@@ -56,27 +56,27 @@ sign =  (char '-' >> return negate)
     <|> (char '+' >> return id)
     <|> return id
 
-parseFloat :: Parser LispVal
+parseFloat :: Parser Value
 parseFloat = do
     f <- sign
     n <- Tok.float lexer
     return $ Float (f n)
 
-parseList :: Parser LispVal
+parseList :: Parser Value
 parseList = List . concat <$> many parseExpr `sepBy` (char ' ' <|> char '\n')
 
-parseSExp :: Parser LispVal
+parseSExp :: Parser Value
 parseSExp = do
     sexp <- Tok.parens lexer (many parseExpr `sepBy` (char ' ' <|> char '\n'))
     return $ List $ concat sexp
 
-parseQuote :: Parser LispVal
+parseQuote :: Parser Value
 parseQuote = do
     void $ char '\''
     x <- parseExpr
     return $ List [Atom "quote", x]
 
-parseExpr :: Parser LispVal
+parseExpr :: Parser Value
 parseExpr =  parseReserved
          <|> try parseFloat
          <|> try parseNumber
@@ -86,7 +86,7 @@ parseExpr =  parseReserved
          <|> parseQuote
          <|> parseSExp
 
-parseReserved :: Parser LispVal
+parseReserved :: Parser Value
 parseReserved = (reservedName "Nil" >> return Nil)
             <|> (reservedName "#t" >> return (Bool True))
             <|> (reservedName "#f" >> return (Bool False))
@@ -100,8 +100,8 @@ contents p = do
     Tok.whiteSpace lexer
     p <* eof
 
-readExpr :: T.Text -> Either ParseError LispVal
+readExpr :: T.Text -> Either ParseError Value
 readExpr = parse (contents parseExpr) "<stdin>"
 
-readExprFile :: T.Text -> Either ParseError LispVal
+readExprFile :: T.Text -> Either ParseError Value
 readExprFile = parse (contents parseList) "<file>"

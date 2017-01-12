@@ -11,11 +11,11 @@ library
   exposed-modules:     Scheme.Environment,
                        Scheme.Eval,
                        Scheme.Exceptions,
-                       Scheme.LispVal,
                        Scheme.Parser,
                        Scheme.Prim,
                        Scheme.Repl,
-                       Scheme.Types
+                       Scheme.Types,
+                       Scheme.Values
 
   build-depends:       base >=4.9 && <4.10,
                        cond,

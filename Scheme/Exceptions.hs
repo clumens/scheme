@@ -20,7 +20,7 @@ module Scheme.Exceptions(catchHaskellExceptions,
                          undefinedErrorMessage)
  where
 
-import Scheme.LispVal(IFunc(..), LispVal(..), SchemeSt(..), mkEmptyState, unwordsList, showVal, typeOf)
+import Scheme.Values(IFunc(..), SchemeSt(..), Value(..), mkEmptyState, unwordsList, showVal, typeOf)
 import Scheme.Types(SchemeTy(..))
 
 import           Control.Exception(SomeException, try)
@@ -44,7 +44,7 @@ errorTypeEnvironment = [
     ("undefined-error",         CondTy $ Just "base-error")
  ]
 
-errorEnvironment :: [(T.Text, LispVal)]
+errorEnvironment :: [(T.Text, Value)]
 errorEnvironment = [
     -- Error making functions.
     ("make-div-by-zero-error",  Func (IFunc $ \args -> return $ errorConstrFn "div-by-zero-error" args) Nothing),
@@ -68,9 +68,9 @@ errorEnvironment = [
  ]
 
 -- Catch any Haskell exceptions raised by evaluation (which shouldn't happen, but that's why they're
--- called exceptions) and convert them into a LispVal Error.  This can then be handled like any
+-- called exceptions) and convert them into a Value Error.  This can then be handled like any
 -- exception that occurred in scheme.
-catchHaskellExceptions :: IO (LispVal, SchemeSt) -> IO (LispVal, SchemeSt)
+catchHaskellExceptions :: IO (Value, SchemeSt) -> IO (Value, SchemeSt)
 catchHaskellExceptions m = try m >>= \case
     -- It seems odd that we're returning an empty environment here.  However, internal errors are
     -- bad and we can't recover from them.  The default exception handler will cause the
@@ -89,7 +89,7 @@ catchHaskellExceptions m = try m >>= \case
 --
 -- Other errors are less bad.  In the REPL case, these errors get printed out and the
 -- user returned to the prompt.
-defaultExceptionHandler :: LispVal -> IO ()
+defaultExceptionHandler :: Value -> IO ()
 defaultExceptionHandler (Raised "internal-error" msg) = do
     TIO.hPutStrLn stderr msg
     exitFailure
@@ -97,7 +97,7 @@ defaultExceptionHandler (Raised ty msg) =
     TIO.hPutStrLn stderr $ T.concat ["Error: (", ty, "):\n", msg]
 defaultExceptionHandler _ = return ()
 
-errorConstrFn :: T.Text -> [LispVal] -> LispVal
+errorConstrFn :: T.Text -> [Value] -> Value
 -- div-by-zero-error takes no arguments.
 errorConstrFn "div-by-zero-error" []    = Condition "div-by-zero-error" divByZeroMessage
 errorConstrFn "div-by-zero-error" x     = Condition "syntax-error" (numArgsMessage 0 x)
@@ -139,7 +139,7 @@ errorConstrFn t [String msg]    = Condition t (T.concat ["\t", msg])
 errorConstrFn _ [x]             = Condition "type-error" (typeErrorMessage "String" x)
 errorConstrFn _ x               = Condition "syntax-error" (numArgsMessage 1 x)
 
-errorPredFn :: T.Text -> [LispVal] -> LispVal
+errorPredFn :: T.Text -> [Value] -> Value
 errorPredFn t [Condition ty _]  = Bool $ t == ty
 errorPredFn _ [x]               = Raised "type-error" (typeErrorMessage "Error" x)
 errorPredFn _ x                 = Raised "syntax-error" (numArgsMessage 1 x)
@@ -165,7 +165,7 @@ ioErrorMessage msg = T.concat ["\t", msg]
 listErrorMessage :: T.Text -> T.Text
 listErrorMessage fn = T.concat ["\tEmpty list encountered in function: ", fn]
 
-numArgsMessage :: Int -> [LispVal] -> T.Text
+numArgsMessage :: Int -> [Value] -> T.Text
 numArgsMessage n args = T.concat ["\tExpected: ", T.pack $ show n, " arg(s)\n",
                                   "\tReceived: ", unwordsList args]
 
@@ -175,7 +175,7 @@ parseErrorMessage msg = T.concat ["\t", msg]
 syntaxErrorMessage :: T.Text -> T.Text
 syntaxErrorMessage msg = T.concat ["\t", msg]
 
-typeErrorMessage :: T.Text -> LispVal -> T.Text
+typeErrorMessage :: T.Text -> Value -> T.Text
 typeErrorMessage expected got = T.concat ["\tExpected: ", expected, "\n",
                                           "\tGot:      ", typeOf got, "\n",
                                           "\tIn value: ", showVal got]

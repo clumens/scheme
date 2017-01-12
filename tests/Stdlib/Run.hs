@@ -12,7 +12,7 @@ import           Test.Tasty.HUnit(testCase)
 
 import Scheme.Eval(evalText, evalFile, initialState)
 import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
-import Scheme.LispVal(showVal)
+import Scheme.Values(showVal)
 
 mkTests :: [(FilePath, T.Text)] -> [TestTree]
 mkTests = map (\(fn, expected) -> testCase (takeFileName fn) $ do

@@ -2,14 +2,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Scheme.LispVal(Eval(..),
-                      LispVal(..),
-                      IFunc(..),
-                      SchemeSt(..),
-                      mkEmptyState,
-                      showVal,
-                      typeOf,
-                      unwordsList)
+module Scheme.Values(Eval(..),
+                     IFunc(..),
+                     SchemeSt(..),
+                     Value(..),
+                     mkEmptyState,
+                     showVal,
+                     typeOf,
+                     unwordsList)
  where
 
 import           Control.Monad.IO.Class(MonadIO)
@@ -22,7 +22,7 @@ import Scheme.Types(SchemeTy(..))
 
 -- Program state consists of two mappings: An environment storing bindings and
 -- an environment storing new types.
-data SchemeSt = SchemeSt { stBindings :: Environment LispVal,
+data SchemeSt = SchemeSt { stBindings :: Environment Value,
                            stTypes :: Environment SchemeTy }
  deriving(Eq, Show)
 
@@ -33,20 +33,20 @@ mkEmptyState = SchemeSt { stBindings=mkEnvironment [],
 newtype Eval a = Eval { unEval :: StateT SchemeSt IO a }
   deriving (Applicative, Functor, Monad, MonadIO, MonadState SchemeSt)
 
-data LispVal = Atom T.Text
-             | Bool Bool
-             | Character Char
-             | Condition T.Text T.Text
-             | Float Double
-             | Func IFunc (Maybe SchemeSt)
-             | List [LispVal]
-             | Nil
-             | Number Integer
-             | Raised T.Text T.Text
-             | String T.Text
+data Value = Atom T.Text
+           | Bool Bool
+           | Character Char
+           | Condition T.Text T.Text
+           | Float Double
+           | Func IFunc (Maybe SchemeSt)
+           | List [Value]
+           | Nil
+           | Number Integer
+           | Raised T.Text T.Text
+           | String T.Text
  deriving (Eq, Show, Typeable)
 
-newtype IFunc = IFunc { func :: [LispVal] -> Eval LispVal }
+newtype IFunc = IFunc { func :: [Value] -> Eval Value }
  deriving (Typeable)
 
 instance Eq IFunc where
@@ -55,7 +55,7 @@ instance Eq IFunc where
 instance Show IFunc where
     show (IFunc _) = "(function)"
 
-showVal :: LispVal -> T.Text
+showVal :: Value -> T.Text
 showVal val = case val of
     Atom atom       -> atom
     Bool True       -> "#t"
@@ -70,7 +70,7 @@ showVal val = case val of
     Raised ty msg   -> T.concat ["Error (", ty, "):\n", msg]
     String txt      -> T.concat [ "\"" , txt, "\""]
 
-typeOf :: LispVal -> T.Text
+typeOf :: Value -> T.Text
 typeOf val = case val of
     Atom _          -> "Atom"
     Bool _          -> "Bool"
@@ -83,5 +83,5 @@ typeOf val = case val of
     String _        -> "String"
     _               -> "Function"
 
-unwordsList :: [LispVal] -> T.Text
+unwordsList :: [Value] -> T.Text
 unwordsList list = T.unwords $ showVal <$> list

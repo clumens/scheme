@@ -7,7 +7,7 @@ module Scheme.Repl(mainLoop)
 import Scheme.Environment(environmentWords)
 import Scheme.Eval(evalText)
 import Scheme.Exceptions(catchHaskellExceptions, defaultExceptionHandler)
-import Scheme.LispVal(LispVal(Condition), SchemeSt(..), showVal)
+import Scheme.Values(Value(Condition), SchemeSt(..), showVal)
 
 import           Control.Monad.IO.Class(liftIO)
 import           Data.Char(isSpace)

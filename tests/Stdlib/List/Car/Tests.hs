@@ -12,7 +12,7 @@ testData :: [(FilePath, T.Text)]
 testData = [
     ("tests/Stdlib/List/Car/car-01.scm", "a"),
     ("tests/Stdlib/List/Car/car-02.scm", "(a)"),
-    ("tests/Stdlib/List/Car/car-03.scm", "EXCEPTION"),
+    ("tests/Stdlib/List/Car/car-03.scm", "Error (list-error):\n\tEmpty list encountered in function: car"),
     ("tests/Stdlib/List/Car/car-04.scm", "a")
  ]
 

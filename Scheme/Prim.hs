@@ -131,6 +131,7 @@ binopFold _ _ args@[]         = return $ Raised "syntax-error" (numArgsMessage 2
 intOp :: (Integer -> Integer -> Integer) -> LispVal -> LispVal -> Eval LispVal
 intOp _  err@(Raised _ _) _    = return err
 intOp _  _ err@(Raised _ _)    = return err
+intOp _  _          (Number 0) = return $ Raised "div-by-zero-error" divByZeroMessage
 intOp op (Number x) (Number y) = return $ Number $ x `op` y
 intOp _  x          (Number _) = return $ Raised "type-error" (typeErrorMessage "Number" x)
 intOp _  (Number _) y          = return $ Raised "type-error" (typeErrorMessage "Number" y)
@@ -304,7 +305,7 @@ listToString x = Raised "type-error" (typeErrorMessage "List" x)
 stringToList :: LispVal -> LispVal
 stringToList err@(Raised _ _)   = err
 stringToList (String s)         = List $ map Character (T.unpack s)
-stringToList _                  = List []
+stringToList x                  = Raised "type-error" (typeErrorMessage "String" x)
 
 --
 -- LISTS
@@ -327,7 +328,7 @@ cons []                     = return $ List []
 cons x                      = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cons: " : map showVal x)
 
 car :: [LispVal] -> Eval LispVal
-car [List []]                   = return Nil
+car [List []]                   = return $ Raised "list-error" (listErrorMessage "car")
 car [List (err@(Raised _ _):_)] = return err
 car [List (x:_)]                = return x
 car [err@(Raised _ _)]          = return err
@@ -338,7 +339,7 @@ car x                           = return $ Raised "undefined-error" (undefinedEr
 cdr :: [LispVal] -> Eval LispVal
 cdr [List (err@(Raised _ _):_)] = return err
 cdr [List (_:xs)]               = return $ List xs
-cdr [List []]                   = return Nil
+cdr [List []]                   = return $ Raised "list-error" (listErrorMessage "cdr")
 cdr [err@(Raised _ _)]          = return err
 cdr [x]                         = return $ Raised "type-error" (typeErrorMessage "List" x)
 cdr []                          = return Nil

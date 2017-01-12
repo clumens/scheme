@@ -11,6 +11,7 @@ module Scheme.Exceptions(catchHaskellExceptions,
                          divByZeroMessage,
                          internalErrorMessage,
                          ioErrorMessage,
+                         listErrorMessage,
                          numArgsMessage,
                          parseErrorMessage,
                          syntaxErrorMessage,
@@ -35,6 +36,7 @@ errorTypeEnvironment = [
     ("internal-error",          CondTy Nothing),
     ("div-by-zero-error",       CondTy $ Just "base-error"),
     ("io-error",                CondTy $ Just "base-error"),
+    ("list-error",              CondTy $ Just "list-error"),
     ("syntax-error",            CondTy $ Just "base-error"),
     ("parse-error",             CondTy $ Just "syntax-error"),
     ("type-error",              CondTy $ Just "base-error"),
@@ -47,6 +49,7 @@ errorEnvironment = [
     -- Error making functions.
     ("make-div-by-zero-error",  Func (IFunc $ \args -> return $ errorConstrFn "div-by-zero-error" args) Nothing),
     ("make-io-error",           Func (IFunc $ \args -> return $ errorConstrFn "io-error" args) Nothing),
+    ("make-list-error",         Func (IFunc $ \args -> return $ errorConstrFn "list-error" args) Nothing),
     ("make-syntax-error",       Func (IFunc $ \args -> return $ errorConstrFn "syntax-error" args) Nothing),
     ("make-parse-error",        Func (IFunc $ \args -> return $ errorConstrFn "parse-error" args) Nothing),
     ("make-type-error",         Func (IFunc $ \args -> return $ errorConstrFn "type-error" args) Nothing),
@@ -56,6 +59,7 @@ errorEnvironment = [
     -- Error predication functions.
     ("div-by-zero-error?",      Func (IFunc $ \args -> return $ errorPredFn "div-by-zero-error" args) Nothing),
     ("io-error?",               Func (IFunc $ \args -> return $ errorPredFn "io-error" args) Nothing),
+    ("list-error?",             Func (IFunc $ \args -> return $ errorPredFn "list-error" args) Nothing),
     ("syntax-error?",           Func (IFunc $ \args -> return $ errorPredFn "syntax-error" args) Nothing),
     ("parse-error?",            Func (IFunc $ \args -> return $ errorPredFn "parse-error" args) Nothing),
     ("type-error?",             Func (IFunc $ \args -> return $ errorPredFn "type-error" args) Nothing),
@@ -101,6 +105,10 @@ errorConstrFn "div-by-zero-error" x     = Condition "syntax-error" (numArgsMessa
 errorConstrFn "io-error" [String msg]   = Condition "io-error" (ioErrorMessage msg)
 errorConstrFn "io-error" [x]            = Condition "type-error" (typeErrorMessage "String" x)
 errorConstrFn "io-error" x              = Condition "syntax-error" (numArgsMessage 1 x)
+-- list-error takes one argument: The function where an empty list occurred
+errorConstrFn "list-error" [String fn]  = Condition "list-error" (listErrorMessage fn)
+errorConstrFn "list-error" [x]          = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "list-error" x            = Condition "syntax-error" (numArgsMessage 1 x)
 -- syntax-error takes one argument: A message
 -- FIXME: Maybe it should take two, the other being the expression
 errorConstrFn "syntax-error" [String msg]   = Condition "syntax-error" (syntaxErrorMessage msg)
@@ -153,6 +161,9 @@ internalErrorMessage msg = T.concat ["*** INTERNAL ERROR: ", msg]
 
 ioErrorMessage :: T.Text -> T.Text
 ioErrorMessage msg = T.concat ["\t", msg]
+
+listErrorMessage :: T.Text -> T.Text
+listErrorMessage fn = T.concat ["\tEmpty list encountered in function: ", fn]
 
 numArgsMessage :: Int -> [LispVal] -> T.Text
 numArgsMessage n args = T.concat ["\tExpected: ", T.pack $ show n, " arg(s)\n",

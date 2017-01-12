@@ -32,7 +32,7 @@ testData = [
     ("tests/Stdlib/Equality/Number/integer-08.scm", "#f"),
     ("tests/Stdlib/Equality/Number/integer-09.scm", "#f"),
     ("tests/Stdlib/Equality/Number/integer-10.scm", "#f"),
-    ("tests/Stdlib/Equality/Number/integer-11.scm", "#t"),
+    ("tests/Stdlib/Equality/Number/integer-11.scm", "#f"),
 
     ("tests/Stdlib/Equality/Number/real-01.scm", "#f"),
     ("tests/Stdlib/Equality/Number/real-02.scm", "#f"),

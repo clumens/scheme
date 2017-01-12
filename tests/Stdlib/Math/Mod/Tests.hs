@@ -12,9 +12,9 @@ testData :: [(FilePath, T.Text)]
 testData = [
     ("tests/Stdlib/Math/Mod/mod-01.scm", "3"),
     ("tests/Stdlib/Math/Mod/mod-02.scm", "0"),
-    ("tests/Stdlib/Math/Mod/mod-03.scm", "-4"),
+    ("tests/Stdlib/Math/Mod/mod-03.scm", "4"),
     ("tests/Stdlib/Math/Mod/mod-04.scm", "0"),
-    ("tests/Stdlib/Math/Mod/mod-05.scm", "EXCEPTION")
+    ("tests/Stdlib/Math/Mod/mod-05.scm", "Error (div-by-zero-error):\n\tDivide by zero")
  ]
 
 tests :: TestTree

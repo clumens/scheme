@@ -11,7 +11,7 @@ import Stdlib.Run(mkTests)
 testData :: [(FilePath, T.Text)]
 testData = [
     ("tests/Stdlib/List/Cdr/cdr-01.scm", "(b c d)"),
-    ("tests/Stdlib/List/Cdr/cdr-02.scm", "Error (list-error):\n\tEmpty list encountered in function: cdr"),
+    ("tests/Stdlib/List/Cdr/cdr-02.scm", "Error (list-error):\n\tError:       empty list\n\tIn function: cdr"),
     ("tests/Stdlib/List/Cdr/cdr-03.scm", "()")
  ]
 

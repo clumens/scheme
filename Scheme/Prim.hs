@@ -328,7 +328,7 @@ cons []                     = return $ List []
 cons x                      = return $ Raised "undefined-error" (undefinedErrorMessage $ T.concat $ "Error in cons: " : map showVal x)
 
 car :: [Value] -> Eval Value
-car [List []]                   = return $ Raised "list-error" (listErrorMessage "car")
+car [List []]                   = return $ Raised "list-error" (listErrorMessage "empty list" "car")
 car [List (err@(Raised _ _):_)] = return err
 car [List (x:_)]                = return x
 car [err@(Raised _ _)]          = return err
@@ -339,7 +339,7 @@ car x                           = return $ Raised "undefined-error" (undefinedEr
 cdr :: [Value] -> Eval Value
 cdr [List (err@(Raised _ _):_)] = return err
 cdr [List (_:xs)]               = return $ List xs
-cdr [List []]                   = return $ Raised "list-error" (listErrorMessage "cdr")
+cdr [List []]                   = return $ Raised "list-error" (listErrorMessage "empty list" "cdr")
 cdr [err@(Raised _ _)]          = return err
 cdr [x]                         = return $ Raised "type-error" (typeErrorMessage "List" x)
 cdr []                          = return Nil

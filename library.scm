@@ -68,20 +68,22 @@
 (define (list . objs) objs)
 ; NEEDS TESTS
 (define (list-ref lst k)
-              ; FIXME: This is an error condition.
-        (cond ((negative? k)    #f)
-              ; FIXME: So is this.
-              ((null? lst)      #f)
-              ((zero? k)        (car lst))
-              (else             (list-ref (cdr lst) (dec k)))))
+        (if (or (negative? k) (> k (dec (length lst))))
+            (raise (make-list-error "index out of bounds" "list-ref"))
+            (let loop ((l lst)
+                       (ndx k))
+                 (cond ((null? l)   (raise (make-list-error "empty list" "list-ref")))
+                       ((zero? ndx) (car l))
+                       (else        (loop (cdr l) (dec ndx)))))))
 ; NEEDS TESTS
 (define (list-tail lst k)
-              ; FIXME: This is an error condition.
-        (cond ((negative? k)    #f)
-              ; FIXME: So is this.
-              ((null? lst)      #f)
-              ((zero? k)        lst)
-              (else             (list-tail (cdr lst) (dec k)))))
+        (if (or (negative? k) (> k (length lst)))
+            (raise (make-list-error "index out of bounds" "list-ref"))
+            (let loop ((l lst)
+                       (ndx k))
+                 (if (zero? ndx)
+                     l
+                     (loop (cdr l) (dec ndx))))))
 ; NEEDS TESTS
 (define (map fn lst)
         (if (null? lst)

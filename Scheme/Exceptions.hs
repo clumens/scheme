@@ -105,10 +105,10 @@ errorConstrFn "div-by-zero-error" x     = Condition "syntax-error" (numArgsMessa
 errorConstrFn "io-error" [String msg]   = Condition "io-error" (ioErrorMessage msg)
 errorConstrFn "io-error" [x]            = Condition "type-error" (typeErrorMessage "String" x)
 errorConstrFn "io-error" x              = Condition "syntax-error" (numArgsMessage 1 x)
--- list-error takes one argument: The function where an empty list occurred
-errorConstrFn "list-error" [String fn]  = Condition "list-error" (listErrorMessage fn)
-errorConstrFn "list-error" [x]          = Condition "type-error" (typeErrorMessage "String" x)
-errorConstrFn "list-error" x            = Condition "syntax-error" (numArgsMessage 1 x)
+-- list-error takes two arguments: The kind of problem, and the function where it happened
+errorConstrFn "list-error" [String ty, String fn]   = Condition "list-error" (listErrorMessage ty fn)
+errorConstrFn "list-error" [x, _]                   = Condition "type-error" (typeErrorMessage "String" x)
+errorConstrFn "list-error" x                        = Condition "syntax-error" (numArgsMessage 2 x)
 -- syntax-error takes one argument: A message
 -- FIXME: Maybe it should take two, the other being the expression
 errorConstrFn "syntax-error" [String msg]   = Condition "syntax-error" (syntaxErrorMessage msg)
@@ -162,8 +162,9 @@ internalErrorMessage msg = T.concat ["*** INTERNAL ERROR: ", msg]
 ioErrorMessage :: T.Text -> T.Text
 ioErrorMessage msg = T.concat ["\t", msg]
 
-listErrorMessage :: T.Text -> T.Text
-listErrorMessage fn = T.concat ["\tEmpty list encountered in function: ", fn]
+listErrorMessage :: T.Text -> T.Text -> T.Text
+listErrorMessage ty fn = T.concat ["\tError:       ", ty, "\n",
+                                   "\tIn function: ", fn]
 
 numArgsMessage :: Int -> [Value] -> T.Text
 numArgsMessage n args = T.concat ["\tExpected: ", T.pack $ show n, " arg(s)\n",

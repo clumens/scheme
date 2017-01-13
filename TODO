@@ -3,7 +3,7 @@
     - Control: case
     - Floats: /, ceiling, floor, round, truncate
     - IO: ???
-    - Math: expt, max, min, number->string, string->number
+    - Math: expt, number->string, string->number
     - String: string-downcase, string-upcase
     - System: exit
 * convert functions to take varargs:

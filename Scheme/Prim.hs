@@ -49,10 +49,6 @@ primEnv = [ -- Basic math.
             ("div",     mkF $ binop     (intOp div)),
             ("mod",     mkF $ binop     (intOp mod)),
 
-            -- Booleans.
-            -- NEEDS TESTS
-            ("boolean=?",   mkF $ binop eqBoolean),
-
             -- Equivalence.
             -- NEEDS TESTS
             ("eqv?",    mkF $ binop     equivalent),
@@ -189,7 +185,7 @@ equivalent :: Value -> Value -> Eval Value
 equivalent err@(Raised _ _ ) _              = return err
 equivalent _ err@(Raised _ _ )              = return err
 equivalent (Atom   x) (Atom   y)            = return . Bool $ x == y
-equivalent x@(Bool _)      y@(Bool _)       = eqBoolean x y
+equivalent x@(Bool _)      y@(Bool _)       = eqOp (==) x y
 equivalent x@(Character _) y@(Character _)  = eqCharacter x y
 equivalent (Float x)  (Float y)             = return . Bool $ x == y
 equivalent (List [])  (List [])             = return $ Bool True
@@ -206,9 +202,6 @@ isBoolean :: Value -> Eval Value
 isBoolean err@(Raised _ _ ) = return err
 isBoolean (Bool _)          = return $ Bool True
 isBoolean _                 = return $ Bool False
-
-eqBoolean :: Value -> Value -> Eval Value
-eqBoolean = eqOp (==)
 
 isCharacter :: Value -> Eval Value
 isCharacter err@(Raised _ _) = return err

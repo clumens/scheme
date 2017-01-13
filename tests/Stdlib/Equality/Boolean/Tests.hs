@@ -17,7 +17,10 @@ testData = [
     ("tests/Stdlib/Equality/Boolean/boolean-05.scm", "#f"),
     ("tests/Stdlib/Equality/Boolean/boolean-06.scm", "#f"),
     ("tests/Stdlib/Equality/Boolean/boolean-07.scm", "#f"),
-    ("tests/Stdlib/Equality/Boolean/boolean-08.scm", "#f")
+    ("tests/Stdlib/Equality/Boolean/boolean-08.scm", "#f"),
+    ("tests/Stdlib/Equality/Boolean/boolean-09.scm", "#t"),
+    ("tests/Stdlib/Equality/Boolean/boolean-10.scm", "#t"),
+    ("tests/Stdlib/Equality/Boolean/boolean-11.scm", "#f")
  ]
 
 tests :: TestTree

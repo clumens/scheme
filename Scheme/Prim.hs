@@ -211,25 +211,12 @@ isCondition (Condition _ _)  = return $ Bool True
 isCondition _                = return $ Bool False
 
 eqCharacter :: Value -> Value -> Eval Value
-eqCharacter x y = charCmp (==) [x, y]
-
-charCmp :: (Char -> Char -> Bool) -> [Value] -> Eval Value
-charCmp fn args | length args < 2 = return $ Raised "syntax-error" (numArgsMessage 2 args)
-                | otherwise       = loop fn args
- where
-    loop :: (Char -> Char -> Bool) -> [Value] -> Eval Value
-    loop op (a:b:rest) = cmpOne op a b >>= \case
-                             Bool True  -> loop op (b:rest)
-                             x          -> return x
-    loop _  _          = return $ Bool True
-
-    cmpOne :: (Char -> Char -> Bool) -> Value -> Value -> Eval Value
-    cmpOne _  err@(Raised _ _) _            = return err
-    cmpOne _  _ err@(Raised _ _)            = return err
-    cmpOne op (Character x) (Character y)   = return $ Bool $ x `op` y
-    cmpOne _  x             (Character _)   = return $ Raised "type-error" (typeErrorMessage "Char" x)
-    cmpOne _  (Character _) y               = return $ Raised "type-error" (typeErrorMessage "Char" y)
-    cmpOne _  x          _                  = return $ Raised "type-error" (typeErrorMessage "Char" x)
+eqCharacter err@(Raised _ _) _          = return err
+eqCharacter _ err@(Raised _ _)          = return err
+eqCharacter (Character x) (Character y) = return $ Bool $ x == y
+eqCharacter x             (Character _) = return $ Raised "type-error" (typeErrorMessage "Char" x)
+eqCharacter (Character _) y             = return $ Raised "type-error" (typeErrorMessage "Char" y)
+eqCharacter x             _             = return $ Raised "type-error" (typeErrorMessage "Char" x)
 
 isList :: Value -> Eval Value
 isList err@(Raised _ _ ) = return err

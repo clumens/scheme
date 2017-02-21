@@ -29,9 +29,6 @@
     - document error types
     - get predicate functions working for subtyping
     - start raising exceptions throughout library.scm
-* more vararg syntax support:
-    (lambda lst ...)
-    (lambda (fn . lst) ...)
 * convert things to use tail recursion
 * do defines work in the body of a lambda or let?
 * fix numeric operations in the primitive environment

@@ -397,14 +397,50 @@ eval (List [Atom "let", Atom name, List pairs, expr]) = do
 eval (List (Atom "let":_)) = return $ Raised "syntax-error" (syntaxErrorMessage "(let <pair1> ... <pairN> <body>)")
 
 -- Define a lambda function with a list of parameters (no name in this one) and a body.  We also grab the
--- current environment and pack that up with the lambda's definition.
+-- current environment and pack that up with the lambda's definition.  The list of parameters may
+-- optionally include a ".", in which case one parameter may follow the dot.  At function application time,
+-- all arguments that do not match up with a format parameter will be condensed down into a list and that
+-- list will be passed as the single parameter after the dot.
 -- Example: (lambda (x) (* 10 x))
+--          ((lambda x x) 3 4 5 6)
+--          ((lambda (x y . z) z) 3 4 5 6)
 eval (List [Atom "lambda", List params, expr]) =
-    if nub params /= params
-    then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
-    else do
-        envLocal <- get
-        return  $ Func (IFunc $ applyLambda expr params) (Just envLocal)
+    case break (== Atom ".") params of
+        (p, [])                     -> evalNormalFunc p
+        (p, [Atom ".", Atom rest])  -> evalSpecialFunc p rest
+        _                           -> return $ Raised "syntax-error" (syntaxErrorMessage "only one parameter may appear after '.'")
+ where
+    evalNormalFunc params' = do
+        -- Done for side effect - make sure all params are atoms.
+        mapM_ ensureAtom params'
+
+        if nub params' /= params' then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
+        else do
+            envLocal <- get
+            return $ Func (IFunc $ applyLambda expr params) (Just envLocal)
+
+    evalSpecialFunc params' extra = do
+        -- Done for side effect - make sure all params are atoms.  extra was already checked via
+        -- pattern matching.
+        mapM_ ensureAtom params'
+
+        -- Make sure parameter names aren't duplicated, and that includes the extra one.
+        let allParams = params' ++ [Atom extra]
+
+        if nub allParams /= allParams then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
+        else do
+            envLocal <- get
+            return $ Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
+                                            in  applyLambda expr (params' ++ [Atom extra])
+                                                                 (matched ++ [List rest]))
+                          (Just envLocal)
+eval (List [Atom "lambda", Atom param, expr]) = do
+    -- In this case, the lambda takes a single parameter and all arguments get converted into a list
+    -- and bound to that parameter.  "define" does the same thing, but the syntax is different for
+    -- lambda because lambdas do not have a name.  It's too bad this can't be shared with
+    -- evalSpecialFunc up above, like how we treat "define".
+    envLocal <- get
+    return $ Func (IFunc $ \args -> applyLambda expr [Atom param] [List args]) (Just envLocal)
 eval (List (Atom "lambda":_)) = return $ Raised "syntax-error" (syntaxErrorMessage "(lambda (<params>) <body>)")
 
 -- Function application, called when some word is encountered.  Check if that word is a function.  If

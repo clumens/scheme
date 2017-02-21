@@ -17,7 +17,8 @@ testData = [
     ("tests/Stdlib/Equality/Procedure/procedure-05.scm", "#t"),
     ("tests/Stdlib/Equality/Procedure/procedure-06.scm", "#f"),
     ("tests/Stdlib/Equality/Procedure/procedure-07.scm", "#f"),
-    ("tests/Stdlib/Equality/Procedure/procedure-08.scm", "#f")
+    ("tests/Stdlib/Equality/Procedure/procedure-08.scm", "#f"),
+    ("tests/Stdlib/Equality/Procedure/procedure-09.scm", "#f")
  ]
 
 tests :: TestTree

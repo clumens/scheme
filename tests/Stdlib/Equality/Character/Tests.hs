@@ -18,6 +18,7 @@ testData = [
     ("tests/Stdlib/Equality/Character/character-06.scm", "#f"),
     ("tests/Stdlib/Equality/Character/character-07.scm", "#f"),
     ("tests/Stdlib/Equality/Character/character-08.scm", "#t"),
+    ("tests/Stdlib/Equality/Character/character-09.scm", "#f"),
 
     ("tests/Stdlib/Equality/Character/eq-01.scm", "#t"),
     ("tests/Stdlib/Equality/Character/eq-02.scm", "#f"),

@@ -1,0 +1,1 @@
+(condition? (lambda (x) x))

@@ -1,0 +1,1 @@
+(condition? '(a b c))

@@ -21,6 +21,7 @@ testData = [
     ("tests/Stdlib/Equality/Number/number-09.scm", "#t"),
     ("tests/Stdlib/Equality/Number/number-10.scm", "#t"),
     ("tests/Stdlib/Equality/Number/number-11.scm", "#t"),
+    ("tests/Stdlib/Equality/Number/number-12.scm", "#f"),
 
     ("tests/Stdlib/Equality/Number/integer-01.scm", "#f"),
     ("tests/Stdlib/Equality/Number/integer-02.scm", "#f"),
@@ -33,6 +34,7 @@ testData = [
     ("tests/Stdlib/Equality/Number/integer-09.scm", "#f"),
     ("tests/Stdlib/Equality/Number/integer-10.scm", "#f"),
     ("tests/Stdlib/Equality/Number/integer-11.scm", "#f"),
+    ("tests/Stdlib/Equality/Number/integer-12.scm", "#f"),
 
     ("tests/Stdlib/Equality/Number/real-01.scm", "#f"),
     ("tests/Stdlib/Equality/Number/real-02.scm", "#f"),
@@ -45,6 +47,7 @@ testData = [
     ("tests/Stdlib/Equality/Number/real-09.scm", "#t"),
     ("tests/Stdlib/Equality/Number/real-10.scm", "#t"),
     ("tests/Stdlib/Equality/Number/real-11.scm", "#t"),
+    ("tests/Stdlib/Equality/Number/real-12.scm", "#f"),
 
     ("tests/Stdlib/Equality/Number/eq-01.scm", "#t"),
     ("tests/Stdlib/Equality/Number/eq-02.scm", "#f"),

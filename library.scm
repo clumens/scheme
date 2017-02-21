@@ -3,7 +3,6 @@
 (define (dec x) (- x 1))
 (define (even? x) (zero? (mod x 2)))
 (define (inc x) (+ x 1))
-; NEEDS TESTS
 (define (max . nums)
         (if (< (length nums) 2)
             (raise (make-syntax-error "expected at least two arguments"))
@@ -13,7 +12,6 @@
                        ((not (number? (car lst)))   (raise (make-type-error "Number" (car lst))))
                        ((> (car lst) largest)       (loop (car lst) (cdr lst)))
                        (else                        (loop largest (cdr lst)))))))
-; NEEDS TESTS
 (define (min . nums)
         (if (< (length nums) 2)
             (raise (make-syntax-error "expected at least two arguments"))
@@ -89,7 +87,6 @@
               (else             #f)))
 (define (length lst) (fold-left inc 0 lst))
 (define (list . objs) objs)
-; NEEDS TESTS
 (define (list-ref lst k)
         (if (or (negative? k) (> k (dec (length lst))))
             (raise (make-list-error "index out of bounds" "list-ref"))
@@ -98,10 +95,9 @@
                  (cond ((null? l)   (raise (make-list-error "empty list" "list-ref")))
                        ((zero? ndx) (car l))
                        (else        (loop (cdr l) (dec ndx)))))))
-; NEEDS TESTS
 (define (list-tail lst k)
         (if (or (negative? k) (> k (length lst)))
-            (raise (make-list-error "index out of bounds" "list-ref"))
+            (raise (make-list-error "index out of bounds" "list-tail"))
             (let loop ((l lst)
                        (ndx k))
                  (if (zero? ndx)
@@ -113,21 +109,17 @@
             '()
             (cons (fn (car lst))
                   (map fn (cdr lst)))))
-; NEEDS TESTS
 (define (memp fn lst)
         (cond ((null? lst)      #f)
               ((fn (car lst))   lst)
               (else             (memp fn (cdr lst)))))
-; NEEDS TESTS
 (define (memq obj lst)
         (cond ((null? lst)          #f)
               ((eqv? obj (car lst)) lst)
               (else                 (memq obj (cdr lst)))))
 (define (null? x) (eqv? '() x))
-; NEEDS TESTS
 (define (remp fn lst)
         (filter (compose not fn) lst))
-; NEEDS TESTS
 (define (remq obj lst)
         (filter (lambda (x) (not (eqv? obj x))) lst))
 (define (reverse lst)

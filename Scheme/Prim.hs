@@ -56,7 +56,6 @@ primEnv = [ -- Basic math.
             -- Type predicates.
             ("boolean?",    mkF $ unop isBoolean),
             ("char?",       mkF $ unop isCharacter),
-            -- NEEDS TESTS
             ("condition?",  mkF $ unop isCondition),
             ("integer?",    mkF $ unop isInteger),
             ("list?",       mkF $ unop isList),
@@ -72,7 +71,6 @@ primEnv = [ -- Basic math.
             ("integer->char", mkF $ unop integerToChar),
 
             -- Strings.
-            -- NEEDS TESTS
             ("list->string",    mkF $ unop $ return . listToString),
             ("string->list",    mkF $ unop $ return . stringToList),
 

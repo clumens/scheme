@@ -126,6 +126,24 @@ applyLambda expr params args =
     withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) params args) $
         eval expr
 
+-- Check that every potential parameter is an atom and that there are no duplicates.
+checkParams :: [Value] -> ([Value] -> Eval Value) -> Eval Value
+checkParams params fn = do
+    atoms <- mapM ensureAtom params
+
+    if nub params /= params
+    then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in parameter list")
+    else fn atoms
+
+-- Check that the name in every (name value) binding pair is an atom and that there are no duplicates.
+checkPairs :: [Value] -> ([Value] -> Eval Value) -> Eval Value
+checkPairs pairs fn = do
+    atoms <- mapM ensureAtom $ getNames pairs
+
+    if nub atoms /= atoms
+    then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
+    else fn atoms
+
 -- Check that a Value is an Atom, raising an exception if this is not the case.  This is used in various places
 -- to ensure that a name is given for a a variable, function, etc.
 ensureAtom :: Value -> Eval Value
@@ -265,32 +283,17 @@ eval (List [Atom "define", List (Atom name:params), expr]) =
         (p, [Atom ".", Atom rest])  -> evalSpecialFunc name p rest
         _                           -> return $ Raised "syntax-error" (syntaxErrorMessage "only one parameter may appear after '.'")
  where
-    evalNormalFunc name' params' = do
-        -- Done for side effect - make sure all params are atoms.
-        mapM_ ensureAtom params'
+    evalNormalFunc name' params' = checkParams params' $ \atoms -> do
+        let fn = Func (IFunc $ applyLambda expr atoms) Nothing
+        modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
+        return (Atom name')
 
-        if nub params' /= params' then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in formal parameters list")
-        else do
-            let fn = Func (IFunc $ applyLambda expr params') Nothing
-            modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
-            return (Atom name')
-
-    evalSpecialFunc name' params' extra = do
-        -- Done for side effect - make sure all params are atoms.  extra was already checked via
-        -- pattern matching.
-        mapM_ ensureAtom params'
-
-        -- Make sure parameter names aren't duplicated, and that includes the extra one.
-        let allParams = params' ++ [Atom extra]
-
-        if nub allParams /= allParams then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in formal parameters list")
-        else do
-            let fn = Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
-                                            in  applyLambda expr (params' ++ [Atom extra])
-                                                                 (matched ++ [List rest]))
-                          Nothing
-            modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
-            return (Atom name')
+    evalSpecialFunc name' params' extra = checkParams (params' ++ [Atom extra]) $ \atoms -> do
+        let fn = Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
+                                        in  applyLambda expr atoms (matched ++ [List rest]))
+                      Nothing
+        modify (\st -> st { stBindings=addToEnvironment [(name', fn)] (stBindings st) })
+        return (Atom name')
 
 -- Define a new error condition type.  The condition must be a subclass of some other
 -- condition type that already exists.  The other arguments are the name of a function that
@@ -359,12 +362,8 @@ eval (List (Atom "guard":_)) = return $ Raised "syntax-error" (syntaxErrorMessag
 -- environment.
 -- Example: (let ((x 1) (y 2)) (+ x y))
 --          (let ((x 1)) (+ 1 x))
-eval (List [Atom "let", List pairs, expr]) = do
-    atoms <- mapM ensureAtom $ getNames pairs
-
-    if nub atoms /= atoms
-    then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
-    else mapEval (getVals pairs) >>= \case
+eval (List [Atom "let", List pairs, expr]) = checkPairs pairs $ \atoms ->
+    mapEval (getVals pairs) >>= \case
         Left (err@(Raised _ _)) -> return err
         Left x                  -> mkMapEvalError x
         Right vals              -> withAugmentedEnv (zipWith (\a b -> (extractVar a, b)) atoms vals) $
@@ -377,12 +376,8 @@ eval (List [Atom "let", List pairs, expr]) = do
 --                    (if (zero? x)
 --                        (write "All done")
 --                        (loop (dec x))))
-eval (List [Atom "let", Atom name, List pairs, expr]) = do
-    atoms <- mapM ensureAtom $ getNames pairs
-
-    if nub atoms /= atoms
-    then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in let bindings")
-    else mapEval (getVals pairs) >>= \case
+eval (List [Atom "let", Atom name, List pairs, expr]) = checkPairs pairs $ \atoms ->
+    mapEval (getVals pairs) >>= \case
         Left (err@(Raised _ _)) -> return err
         Left x                  -> mkMapEvalError x
         Right vals              -> do
@@ -410,30 +405,15 @@ eval (List [Atom "lambda", List params, expr]) =
         (p, [Atom ".", Atom rest])  -> evalSpecialFunc p rest
         _                           -> return $ Raised "syntax-error" (syntaxErrorMessage "only one parameter may appear after '.'")
  where
-    evalNormalFunc params' = do
-        -- Done for side effect - make sure all params are atoms.
-        mapM_ ensureAtom params'
+    evalNormalFunc params' = checkParams params' $ \atoms -> do
+        envLocal <- get
+        return $ Func (IFunc $ applyLambda expr atoms) (Just envLocal)
 
-        if nub params' /= params' then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
-        else do
-            envLocal <- get
-            return $ Func (IFunc $ applyLambda expr params) (Just envLocal)
-
-    evalSpecialFunc params' extra = do
-        -- Done for side effect - make sure all params are atoms.  extra was already checked via
-        -- pattern matching.
-        mapM_ ensureAtom params'
-
-        -- Make sure parameter names aren't duplicated, and that includes the extra one.
-        let allParams = params' ++ [Atom extra]
-
-        if nub allParams /= allParams then return $ Raised "syntax-error" (syntaxErrorMessage "duplicate names given in lambda parameters")
-        else do
-            envLocal <- get
-            return $ Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
-                                            in  applyLambda expr (params' ++ [Atom extra])
-                                                                 (matched ++ [List rest]))
-                          (Just envLocal)
+    evalSpecialFunc params' extra = checkParams (params' ++ [Atom extra]) $ \atoms -> do
+        envLocal <- get
+        return $ Func (IFunc $ \args -> let (matched, rest) = splitAt (length params') args
+                                        in  applyLambda expr atoms (matched ++ [List rest]))
+                      (Just envLocal)
 eval (List [Atom "lambda", Atom param, expr]) = do
     -- In this case, the lambda takes a single parameter and all arguments get converted into a list
     -- and bound to that parameter.  "define" does the same thing, but the syntax is different for

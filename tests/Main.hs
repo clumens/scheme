@@ -19,12 +19,15 @@ import qualified Stdlib.List.Car.Tests
 import qualified Stdlib.List.Cdr.Tests
 import qualified Stdlib.List.Cons.Tests
 import qualified Stdlib.List.Exists.Tests
+import qualified Stdlib.List.Filter.Tests
+import qualified Stdlib.List.Find.Tests
 import qualified Stdlib.List.Forall.Tests
 import qualified Stdlib.List.Length.Tests
 import qualified Stdlib.List.List.Tests
 import qualified Stdlib.List.ListToString.Tests
 import qualified Stdlib.List.ListRef.Tests
 import qualified Stdlib.List.ListTail.Tests
+import qualified Stdlib.List.Map.Tests
 import qualified Stdlib.List.Memp.Tests
 import qualified Stdlib.List.Memq.Tests
 import qualified Stdlib.List.Null.Tests
@@ -66,12 +69,15 @@ main = defaultMain $ testGroup "Stdlib" [
     Stdlib.List.Cdr.Tests.tests,
     Stdlib.List.Cons.Tests.tests,
     Stdlib.List.Exists.Tests.tests,
+    Stdlib.List.Filter.Tests.tests,
+    Stdlib.List.Find.Tests.tests,
     Stdlib.List.Forall.Tests.tests,
     Stdlib.List.Length.Tests.tests,
     Stdlib.List.List.Tests.tests,
     Stdlib.List.ListRef.Tests.tests,
     Stdlib.List.ListTail.Tests.tests,
     Stdlib.List.ListToString.Tests.tests,
+    Stdlib.List.Map.Tests.tests,
     Stdlib.List.Memp.Tests.tests,
     Stdlib.List.Memq.Tests.tests,
     Stdlib.List.Null.Tests.tests,

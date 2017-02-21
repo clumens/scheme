@@ -63,10 +63,8 @@
         (cond ((null? lst)      #f)
               ((fn (car lst))   #t)
               (else             (exists fn (cdr lst)))))
-; NEEDS TESTS
 (define (filter fn lst)
         (fold-right (lambda (x xs) (if (fn x) (cons x xs) xs)) '() lst))
-; NEEDS TESTS
 (define (find fn lst)
         (cond ((null? lst)      #f)
               ((fn (car lst))   (car lst))
@@ -103,7 +101,6 @@
                  (if (zero? ndx)
                      l
                      (loop (cdr l) (dec ndx))))))
-; NEEDS TESTS
 (define (map fn lst)
         (if (null? lst)
             '()

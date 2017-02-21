@@ -16,9 +16,13 @@
 * add records
 * add unquote and quasiquote (?)
 * audit stdlib:
+    - documentation for all functions
     - raise exceptions where appropriate
     - test cases for all functions
     - type checking for all functions
+* documentation:
+    - explain all exceptions that can be raised by a function
+    - for anything that takes a function, explain how many parameters it accepts
 * exceptions:
     - Exceptions.hs is getting way too verbose
     - allow user-defined make-*-error functions to take multiple arguments

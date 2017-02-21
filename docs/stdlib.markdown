@@ -38,6 +38,10 @@ side effects before returning some value.
 
 Returns `#t` if `obj` is a boolean, otherwise returns `#f`.
 
+`(boolean=? bool1 ... boolN)`
+
+Returns `#t` if all the boolean arguments are the same.,
+
 `(car list)`
 
 Returns the contents of the first element of `list`, which must not be empty.
@@ -124,6 +128,32 @@ matching element is found, return `#f`.  Otherwise return `#t`.  **NOTE:** This 
 differs from standard scheme.  It only supports one list.  This may be fixed.  It also does
 not support returning the matching value.  This may not be fixed.
 
+`(filter proc list)`
+
+Returns all the elements of `list` for which `proc` returns `#t`.  **NOTE:** This function
+differs from standard scheme.  It only supports one list.  This may be fixed.
+
+`(find proc list)`
+
+Returns the first element of `list` for which `proc` returns `#t`.  If no element satisfies
+this condition, it returns `#f`.
+
+`(fold-left proc init list)`
+
+This function applies `proc` to an accumulator value and each element of `list` from left
+to right.  The accumulator value starts with `init` and builds up with each successive
+application.  When all elements have been processed, the accumulator value is returned.
+`proc` must take two arguments.  **NOTE:** This function differs from standard scheme.  It
+only supports one list.  This may be fixed.
+
+`(fold-right proc init list)`
+
+This function applies `proc` to an accumulator value and each element of `list` from right
+to left.  The accumulator value starts with `init` and builds up with each successive
+application.  When all elements have been processed, the accumulator value is returned.
+`proc` must take two arguments.  **NOTE:** This function differs from standard scheme.  It
+only supports one list.  This may be fixed.
+
 `(for-all func list)`
 
 Apply `func` to each element of `list` until it returns `#f`.  If the list is empty or all
@@ -178,6 +208,27 @@ Returns a new list containing all its arguments.
 `(list? obj)`
 
 Returns `#t` if `obj` is a list, otherwise returns `#f`.
+
+`(list-ref list k)`
+
+Returns the `kth` element of `list`, which must be at least `k+1` in length.
+
+`(list-tail list k)`
+
+Returns `list` after dropping the first `k` elements.  `list` must be at least `k` in length.
+
+`(map proc list)`
+
+Applies `proc` to each element of `list` and returns a new list of the results.  **NOTE:** This
+function differs from standard scheme.  It only takes one list.  This may be fixed.
+
+`(max n1 n2 ... nN)`
+
+Returns the largest number from all its arguments.
+
+`(min n1 n2 ... nN)`
+
+Returns the smallest number from all its arguments.
 
 `(mod x y)`
 
